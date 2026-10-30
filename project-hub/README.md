@@ -36,6 +36,6 @@ php project-hub/tests/schema_smoke_test.php
 
 ## 下一步
 
-1. 在 InfinityFree 上執行 `tools/host-check.php`，把結果填入 `docs/01-host-environment.md` 第 6 節；
+1. ~~在 InfinityFree 上執行 `tools/host-check.php`~~（2026-10-30 已完成：資料庫定案 MySQL／MariaDB，SMTP 與 HTTPS 皆可對外連線）；
 2. 確認 `docs/06-open-questions.md` 中的項目（特別是 #1 資料庫、#3 郵件服務、#8–#12 權限細節）；
 3. 確認後將 Schema 草案轉為正式遷移檔，進入階段 3（登入及 2FA）。

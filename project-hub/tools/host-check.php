@@ -249,7 +249,7 @@ body{font-family:system-ui,-apple-system,"Noto Sans TC",sans-serif;margin:0;padd
 h1{font-size:1.3rem}h2{font-size:1.05rem;margin-top:28px}
 table{border-collapse:collapse;width:100%;background:#fff}
 th,td{border:1px solid #d8dce3;padding:6px 8px;text-align:left;vertical-align:top;word-break:break-word}
-.ok{color:#137333;font-weight:600}.ng{color:#b3261e;font-weight:600}
+.ok{color:#137333;font-weight:600}.ng{color:#b3261e;font-weight:600}.opt{color:#a15c00;font-weight:600}
 form{background:#fff;border:1px solid #d8dce3;padding:12px;margin-top:8px}
 label{display:block;margin:6px 0}input,select{padding:6px;max-width:100%}
 .warn{background:#fff4e5;border:1px solid #f0c27b;padding:10px}
@@ -262,7 +262,7 @@ label{display:block;margin:6px 0}input,select{padding:6px;max-width:100%}
 <h2>1. PHP 擴充套件</h2>
 <table><tr><th>擴充</th><th>狀態</th><th>用途</th></tr>
 <?php foreach ($extRows as [$n, $s, $p, $ok]): ?>
-<tr><td><?= h($n) ?></td><td class="<?= $ok ? 'ok' : 'ng' ?>"><?= h($s) ?></td><td><?= h($p) ?></td></tr>
+<tr><td><?= h($n) ?></td><td class="<?= $s === 'OK' ? 'ok' : ($ok ? 'opt' : 'ng') ?>"><?= h($s) ?></td><td><?= h($p) ?></td></tr>
 <?php endforeach; ?>
 </table>
 

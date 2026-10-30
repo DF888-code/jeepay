@@ -6,8 +6,8 @@
 
 | # | 項目 | 建議 | 理由 | 需要的行動 |
 |---|---|---|---|---|
-| 1 | 最終資料庫：MySQL／MariaDB 或 PostgreSQL | **MySQL／MariaDB（InfinityFree 內建）** | Aiven 需 `pdo_pgsql` 與對外非標準 Port，免費主機上高度不確定；跨區延遲；見 01 文件第 4 節 | 執行 `host-check.php` 後確認 |
-| 2 | InfinityFree 對外 SMTP 及 HTTPS API 限制 | 先實測 | 只能實測 | 執行 `host-check.php` |
+| 1 | 最終資料庫：MySQL／MariaDB 或 PostgreSQL | **已定案：MySQL／MariaDB（InfinityFree 內建）** | 實測主機缺少 `pdo_pgsql`，Aiven 方案無法連線；見 01 文件第 6 節 | 已結案（2026-10-30） |
+| 2 | InfinityFree 對外 SMTP 及 HTTPS API 限制 | **已確認：SMTP 25／465／587 與 HTTPS 443 皆可連線** | 實測結果見 01 文件第 6 節 | 已結案；實際寄達率待階段 9 測試 |
 | 3 | 郵件服務供應商 | 選擇提供 SMTP **與** HTTPS API 的交易郵件服務（例如 Brevo、Mailgun、Amazon SES、Postmark 等，依免費額度與網域驗證需求比較） | 同一供應商兩種通道都有，SMTP 被擋時可直接改走 API | 依實測結果與預算決定；使用自有網域需設定 SPF／DKIM／DMARC |
 | 4 | 歷史操作紀錄保存期限 | 預設 **365 天**，系統設定可調整（30–3650 天） | 兼顧觀察長期使用狀況與免費主機容量 | 請確認 |
 | 5 | 是否保存完整搜尋關鍵字 | 預設**不保存原文**，只記錄「有搜尋、結果數量、關鍵字長度」；系統設定可改為保存 | 使用者可能把密碼、個資當搜尋字串 | 請確認 |

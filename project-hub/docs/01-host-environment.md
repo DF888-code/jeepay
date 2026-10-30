@@ -1,6 +1,6 @@
 # 01 主機環境與限制檢查
 
-> 狀態：**待實測**。本文件中關於 InfinityFree 的描述，來自其公開說明與社群經驗，主機政策可能隨時變更，
+> 狀態：**已於 2026-10-30 完成 InfinityFree 實測**（見第 6 節）。本文件中關於 InfinityFree 的描述，來自其公開說明與社群經驗，主機政策可能隨時變更，
 > 一律以 `tools/host-check.php` 在實際帳號上的檢查結果為準。實測後請把結果填入第 4 節。
 
 ## 1. 為什麼要先檢查
@@ -103,20 +103,31 @@ SPF／DKIM／DMARC 需要在網域 DNS 新增 TXT（或 CNAME）紀錄。可行�
 | Schema 草案 | 可於 MariaDB 10.11 成功建立 12 張資料表 |
 | 對外連線 | 開發容器無一般對外網路，SMTP／HTTPS 測試皆為 DNS 失敗（預期中，不具參考價值） |
 
-## 6. InfinityFree 實測結果（待填寫）
+## 6. InfinityFree 實測結果
 
-| 項目 | 結果 | 測試日期 |
+測試主機：`book888.free.je`（測試日期 2026-10-30，以 `tools/host-check.php` 執行）
+
+| 項目 | 結果 | 結論 |
 |---|---|---|
-| PHP 版本 |  |  |
-| 缺少的擴充套件 |  |  |
-| 停用的函式 |  |  |
-| Argon2id |  |  |
-| SMTP 587 |  |  |
-| SMTP 465 |  |  |
-| HTTPS 443（Email API） |  |  |
-| Aiven PostgreSQL Port |  |  |
-| MySQL 版本／是否 MariaDB |  |  |
-| 上層目錄是否可寫 |  |  |
+| PHP 版本 | 8.4.27（apache2handler） | 符合最低需求 8.1；主機不可選版本，程式需持續相容新版 PHP |
+| 擴充套件 | pdo、pdo_mysql、openssl、sodium、mbstring、intl、json、hash、session、curl、gd、fileinfo、zip 皆可用 | 無須任何替代方案 |
+| pdo_pgsql | **缺少** | **Aiven PostgreSQL 方案不可行**，資料庫定案為 MySQL／MariaDB |
+| 停用的函式 | exec、shell_exec、proc_open、popen、system、passthru、set_time_limit | 確定採純 PHP 簡繁轉換；`fsockopen`／`stream_socket_client` 可用 |
+| Argon2id | 支援 | 密碼雜湊採 Argon2id |
+| max_execution_time | 60 秒（`set_time_limit` 被停用，無法延長） | 重建索引、匯出、清理皆需分批，每批遠低於 60 秒 |
+| memory_limit／post_max_size／upload_max_filesize | 512M／30M／20M | 充足 |
+| date.timezone | America/New_York | 程式啟動時強制設為 UTC，不依賴主機預設 |
+| display_errors | 關閉 | 程式仍會自行強制關閉 |
+| HTTPS | 測試時以 http 開啟 | 需於控制台申請免費 SSL；正式使用前必須強制 HTTPS |
+| 上層目錄可寫 | 否 | 機密設定放在 htdocs 內受 `.htaccess` 保護的目錄（階段 3 驗證保護是否生效） |
+| SMTP 587 | 連線成功（10 ms），收到 220 回應 | 可用；STARTTLS 升級與帳密驗證於階段 9 實際寄送時驗證 |
+| SMTP 465 | TLS 連線成功（含憑證驗證，1095 ms），收到 220 回應 | 可用 |
+| SMTP 25 | 連線成功（11 ms） | 可用，但不建議（多數服務商要求 587／465） |
+| HTTPS 443（Brevo、Resend API） | 連線成功（51／70 ms） | Email API 可作為備援通道 |
+| MySQL 版本／是否 MariaDB | 尚未測試 | 建立資料庫後再測（影響是否可用 ngram 全文檢索，非必要） |
+
+**結論**：主機可對外連線 SMTP 與 HTTPS，第一階段依規格採**通用 SMTP**，HTTPS Email API 保留為備援。
+「可以連線」不等於「可以寄達」：帳密驗證、寄件人驗證與是否被分類為垃圾郵件，需在系統設定中心完成後以實際寄送測試確認。
 
 ### 執行方式
 
