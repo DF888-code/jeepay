@@ -118,7 +118,7 @@ SPF／DKIM／DMARC 需要在網域 DNS 新增 TXT（或 CNAME）紀錄。可行�
 | memory_limit／post_max_size／upload_max_filesize | 512M／30M／20M | 充足 |
 | date.timezone | America/New_York | 程式啟動時強制設為 UTC，不依賴主機預設 |
 | display_errors | 關閉 | 程式仍會自行強制關閉 |
-| HTTPS | 測試時以 http 開啟 | 需於控制台申請免費 SSL；正式使用前必須強制 HTTPS |
+| HTTPS | 免費子網域內建 `*.free.je` 憑證（ZeroSSL，90 天，由主機商更新）；以 https 開啟時 `$_SERVER['HTTPS']` 正確為「是」 | 不需另外申請；程式可直接以標準 `$_SERVER['HTTPS']` 判斷並強制轉址，不需信任代理標頭。改用自有網域時需另行申請 SSL |
 | 上層目錄可寫 | 否 | 機密設定放在 htdocs 內受 `.htaccess` 保護的目錄（階段 3 驗證保護是否生效） |
 | SMTP 587 | 連線成功（10 ms），收到 220 回應 | 可用；STARTTLS 升級與帳密驗證於階段 9 實際寄送時驗證 |
 | SMTP 465 | TLS 連線成功（含憑證驗證，1095 ms），收到 220 回應 | 可用 |
