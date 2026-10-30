@@ -1,9 +1,9 @@
 -- =====================================================================
--- 專案管理與知識紀錄平台（Project Hub）資料庫 Schema 草案
+-- 專案管理與知識紀錄平台（Project Hub）資料庫 Schema：初始遷移 0001
 -- 目標：MySQL 8.0+ / MariaDB 10.6+（InnoDB, utf8mb4）
 --
--- 狀態：草案（Draft），僅供階段 2 審查使用，尚未定案。
---   * 最終資料庫選型尚待確認（見 docs/06-open-questions.md）。
+-- 狀態：已定案（2026-10-30）。資料庫依主機實測定為 MySQL／MariaDB。
+--   * 已發佈的遷移檔不可再修改；之後的結構變更一律新增 0002、0003… 遷移檔。
 --   * 本檔刻意只使用 MySQL 與 MariaDB 共通語法，並避免 PostgreSQL 難以對應的特性
 --     （例如 ON UPDATE CURRENT_TIMESTAMP、FULLTEXT ngram），以降低日後換庫成本。
 --

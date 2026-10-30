@@ -22,7 +22,7 @@
 | QR Code | 純 PHP 產生 SVG（候選：`chillerlan/php-qrcode`），或打包本地 JS | Secret 不得離開本系統 |
 | SMTP | 候選 `phpmailer/phpmailer`（成熟、檔案少、支援 STARTTLS／SMTPS） | 自行實作 SMTP 協定容易出現安全問題 |
 | 簡繁轉換 | 純 PHP 的 OpenCC 實作（候選：`overtrue/php-opencc`）或自行載入 OpenCC 詞典做最長詞優先比對 | 免費主機無法執行 OpenCC 執行檔；詞彙級轉換符合規格「不可只用單字元替換」 |
-| 測試 | PHPUnit（開發環境）+ 整合測試使用真實 MariaDB | 權限測試必須打到真實 SQL，不能只 mock |
+| 測試 | 自建極簡測試工具（`tests/run.php`）+ 整合測試實際啟動網站並使用真實 MariaDB | 不增加相依套件；權限測試必須打到真實 SQL 與真實 HTTP 流程，不能只 mock |
 
 > 候選套件在階段 3／7 正式引入前，會再確認授權條款、檔案數量與 PHP 版本相容性。
 
@@ -50,8 +50,7 @@ project-hub/
 │   ├── config.example.php   # 範本（進版控）
 │   └── config.php           # 實際機密設定（不進版控）
 ├── database/
-│   ├── migrations/          # 依序執行的 SQL 遷移
-│   └── schema.mysql.draft.sql
+│   └── migrations/          # 依序執行的 SQL 遷移（0001_initial_schema.sql 起）
 ├── storage/                 # Session（若自管）、匯出暫存；.htaccess 全面拒絕
 ├── tests/
 └── tools/host-check.php

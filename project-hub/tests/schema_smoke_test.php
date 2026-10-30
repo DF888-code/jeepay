@@ -36,7 +36,7 @@ foreach ($pdo->query('SHOW TABLES')->fetchAll(PDO::FETCH_COLUMN) as $t) {
     $pdo->exec("DROP TABLE `{$t}`");
 }
 $pdo->exec('SET FOREIGN_KEY_CHECKS=1');
-$pdo->exec(file_get_contents(__DIR__ . '/../database/schema.mysql.draft.sql'));
+$pdo->exec(file_get_contents(__DIR__ . '/../database/migrations/0001_initial_schema.sql'));
 
 $pass = 0;
 $fail = 0;

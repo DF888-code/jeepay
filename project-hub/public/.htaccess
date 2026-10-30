@@ -1,0 +1,29 @@
+# 部署後此檔位於 htdocs/.htaccess
+Options -Indexes
+DirectoryIndex index.php
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # 私有目錄一律 404：即使子目錄自己的 .htaccess 遺失，也不會被直接讀取
+    RewriteRule ^(app|config|views|storage|database|vendor|tools|tests|docs)(/|$) - [R=404,L,NC]
+    # 隱藏檔與套件管理檔
+    RewriteRule (^|/)\. - [R=404,L]
+    RewriteRule ^composer\.(json|lock)$ - [R=404,L,NC]
+
+    # 其他不存在的路徑交給前端控制器
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^ index.php [QSA,L]
+</IfModule>
+
+# 除了 index.php 之外，不允許直接執行其他 PHP 檔
+<FilesMatch "\.php$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+</FilesMatch>
+<Files "index.php">
+    <IfModule mod_authz_core.c>
+        Require all granted
+    </IfModule>
+</Files>

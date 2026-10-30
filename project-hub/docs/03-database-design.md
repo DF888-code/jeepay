@@ -1,6 +1,6 @@
 # 03 資料庫設計
 
-> 完整 DDL：[`database/schema.mysql.draft.sql`](../database/schema.mysql.draft.sql)（草案，尚未定案）
+> 完整 DDL：[`database/migrations/0001_initial_schema.sql`](../database/migrations/0001_initial_schema.sql)（已定案，2026-10-30）
 > 驗證測試：[`tests/schema_smoke_test.php`](../tests/schema_smoke_test.php)
 
 ## 1. 資料表總覽

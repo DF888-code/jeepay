@@ -1,0 +1,6 @@
+/vendor/
+/dist/
+/config/config.php
+/storage/*
+!/storage/.htaccess
+/tests/tmp/
