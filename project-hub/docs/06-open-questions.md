@@ -35,4 +35,4 @@
 | 20 | 本 Repo 的位置 | 目前放在 `jeepay` repo 的 `project-hub/` 子目錄 | `jeepay` 是 Java 支付系統，與本平台無關。建議日後移到獨立的 Git Repo，避免 CI、授權條款與發佈流程互相干擾 |
 | 21 | 免費主機存放內部敏感資料 | 正式導入前評估付費主機，或至少建立定期匯出備份 | 免費主機無 SLA 與備份保證 |
 | 22 | 地區用語轉換（如「記憶體／内存」） | 第一版只做字形與詞彙轉換（OpenCC s2t/t2s 詞典） | 地區用語屬強化項目，可在階段 7 評估 `tw2sp` |
-| 23 | 介面風格 | **已決定（2026-11-01）：改為 Bootstrap 5 風格** | 使用者指定。Bootstrap 檔案下載後放在本站 `assets/vendor/`，不從 CDN 載入，以符合 CSP `'self'` 限制；不使用 inline script |
+| 23 | 介面風格 | **已決定並完成（2026-11-01）：改為 Bootstrap 5.3.8 風格** | 使用者指定。Bootstrap 檔案下載後放在本站 `assets/vendor/`，不從 CDN 載入，以符合 CSP `'self'` 限制；不使用 inline script |

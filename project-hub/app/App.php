@@ -244,9 +244,12 @@ final class App
     {
         return '<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8">'
             . '<meta name="viewport" content="width=device-width, initial-scale=1">'
-            . '<title>' . e($title) . '</title><link rel="stylesheet" href="/assets/app.css"></head>'
-            . '<body><main class="container narrow"><div class="card"><h1>' . e($title) . '</h1><p>' . e($message)
-            . '</p><p><a href="/">回首頁</a></p></div></main></body></html>';
+            . '<title>' . e($title) . '</title><script src="/assets/theme.js"></script>'
+            . '<link rel="stylesheet" href="/assets/vendor/bootstrap-5.3.8/bootstrap.min.css">'
+            . '<link rel="stylesheet" href="/assets/app.css"></head>'
+            . '<body class="bg-body-tertiary"><main class="container py-5"><div class="card shadow-sm auth-card"><div class="card-body p-4">'
+            . '<h1 class="h4">' . e($title) . '</h1><p>' . e($message) . '</p>'
+            . '<a class="btn btn-outline-primary" href="/">回首頁</a></div></div></main></body></html>';
     }
 
     private function withSecurityHeaders(Response $response, Request $request): Response
