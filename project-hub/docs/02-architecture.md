@@ -17,7 +17,7 @@
 |---|---|---|
 | 後端 | PHP 8.1+，無大型框架，自建精簡分層 | Laravel／Symfony 檔案數龐大，不利 FTP 部署與 inode 限制；本系統路由與功能數量有限 |
 | 資料存取 | PDO + 參數化查詢，`ATTR_EMULATE_PREPARES=false` | 防 SQL Injection；集中在 Repository |
-| 前端 | 伺服器端渲染 HTML + 原生 JS（`fetch` 呼叫 JSON API 處理局部互動） | 不需建置工具，RWD 以 CSS Grid／Flexbox 與 Media Query 實作 |
+| 前端 | 伺服器端渲染 HTML + 原生 JS（`fetch` 呼叫 JSON API 處理局部互動）；**介面風格改為 Bootstrap 5**（自行託管於 `assets/vendor/`，見待確認事項 #23） | 不需建置工具；Bootstrap 已編譯好的 CSS／JS 直接放在本站，不違反 CSP |
 | TOTP | 自行實作 RFC 6238（約 80 行，可完整單元測試） | 避免引入不必要的套件 |
 | QR Code | 純 PHP 產生 SVG（候選：`chillerlan/php-qrcode`），或打包本地 JS | Secret 不得離開本系統 |
 | SMTP | 候選 `phpmailer/phpmailer`（成熟、檔案少、支援 STARTTLS／SMTPS） | 自行實作 SMTP 協定容易出現安全問題 |
