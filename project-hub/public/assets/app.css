@@ -34,3 +34,10 @@
 .viewer-image { max-height: 80vh; }
 .file-ext { min-width: 3.2rem; }
 .upload-thumb { width: 48px; height: 48px; object-fit: cover; }
+
+/* 歷史操作紀錄：每小時分布圖（SVG） */
+.hour-chart { max-height: 180px; }
+.hour-chart .bar-am { fill: var(--bs-primary); }
+.hour-chart .bar-pm { fill: var(--bs-warning); }
+.hour-chart .bar-label { font-size: 10px; fill: var(--bs-secondary-color); }
+.hour-chart .bar-axis { stroke: var(--bs-border-color); }

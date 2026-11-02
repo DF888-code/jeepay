@@ -12,6 +12,7 @@ use ProjectHub\Controllers\AccountController;
 use ProjectHub\Controllers\AdminUserController;
 use ProjectHub\Controllers\AttachmentController;
 use ProjectHub\Controllers\AuthController;
+use ProjectHub\Controllers\AdminLogController;
 use ProjectHub\Controllers\AdminProjectController;
 use ProjectHub\Controllers\ProjectContentController;
 use ProjectHub\Controllers\SearchController;
@@ -119,6 +120,8 @@ final class App
             'GET /admin/migrate' => [self::ACCESS_ADMIN, AdminUserController::class, 'showMigrations'],
             'POST /admin/migrate' => [self::ACCESS_ADMIN, AdminUserController::class, 'migrate'],
             'GET /admin/permissions' => [self::ACCESS_ADMIN, AdminUserController::class, 'permissions'],
+            'GET /admin/logs' => [self::ACCESS_ADMIN, AdminLogController::class, 'index'],
+            'GET /admin/logs/export' => [self::ACCESS_ADMIN, AdminLogController::class, 'export'],
             'GET /admin/projects' => [self::ACCESS_ADMIN, AdminProjectController::class, 'index'],
             'POST /admin/search-index/rebuild' => [self::ACCESS_ADMIN, AdminProjectController::class, 'rebuildSearchIndex'],
             'POST /admin/projects/{id}/restore' => [self::ACCESS_ADMIN, AdminProjectController::class, 'restore'],

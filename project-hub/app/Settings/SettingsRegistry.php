@@ -71,6 +71,10 @@ final class SettingsRegistry
                 'category' => 'attachments', 'label' => '附件檔案數上限', 'type' => 'int', 'default' => 5000, 'min' => 100, 'max' => 20000,
                 'help' => '每張圖片會另存一個預覽檔；主機總檔案數上限約 30,000。',
             ],
+            'logs.retention_days' => [
+                'category' => 'logs', 'label' => '歷史操作紀錄保存天數', 'type' => 'int', 'default' => 365, 'min' => 30, 'max' => 3650,
+                'help' => '決議 #4。超過天數的紀錄會在管理者開啟紀錄頁時分批刪除（主機沒有排程）。',
+            ],
             'search.log_keywords' => [
                 'category' => 'search', 'label' => '歷史紀錄保存搜尋原文', 'type' => 'bool', 'default' => false,
                 'help' => '決議 #5：預設只記錄搜尋字數與結果數量；搜尋文字可能包含密碼或個資。',

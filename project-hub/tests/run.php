@@ -103,6 +103,8 @@ try {
     $failures += run_registered_tests('整合測試：隨手記附件（階段 6b）');
     require __DIR__ . '/Integration/SearchTest.php';
     $failures += run_registered_tests('整合測試：全站搜尋與簡繁轉換（階段 7）');
+    require __DIR__ . '/Integration/LogTest.php';
+    $failures += run_registered_tests('整合測試：歷史操作紀錄（階段 8）');
 } finally {
     proc_terminate($server);
     @unlink($tmp . '/config.php');
