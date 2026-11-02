@@ -8,6 +8,8 @@ use ProjectHub\Activity\ActivityLogger as Log;
 use ProjectHub\Authorization\Authorizer;
 use ProjectHub\Http\Request;
 use ProjectHub\Http\Response;
+use ProjectHub\Project\KeywordRepository;
+use ProjectHub\Project\NoteRepository;
 use ProjectHub\Project\ProjectRepository;
 use ProjectHub\Search\TextNormalizer;
 
@@ -17,7 +19,7 @@ use ProjectHub\Search\TextNormalizer;
  * 每個動作都先經過 Authorizer 的雙重授權；不符合時一律回應與「專案不存在」相同的 404，
  * 不洩漏專案名稱或存在與否，並在歷史操作紀錄留下拒絕事件。
  */
-final class ProjectController extends Controller
+final class ProjectController extends ProjectBaseController
 {
     private const PAGE_SIZE = 30;
 
@@ -78,12 +80,29 @@ final class ProjectController extends Controller
             return $this->deny('project.view', $id);
         }
         $project = (array)$this->projects()->find($id);
-        $this->app->logger->log('project', 'project.view', Log::RESULT_SUCCESS, $uid, $this->app->auth->label(), null, $id, (string)$project['name']);
+        $can = $this->authorizer()->abilities($uid, $id);
+        $before = $request->query('before');
+        $notes = (new NoteRepository($this->app->db))->page($id, ctype_digit($before) ? (int)$before : null, ProjectContentController::NOTES_PAGE_SIZE);
+        // 每則隨手記可執行的動作（決議 #10）：作者本人具編輯權限可修改與刪除；具刪除權限者可刪除他人的隨手記
+        foreach ($notes['items'] as &$note) {
+            $mine = (int)$note['author_id'] === $uid;
+            $note['can_edit'] = $mine && $can['edit'];
+            $note['can_delete'] = ($mine && $can['edit']) || $can['delete'];
+        }
+        unset($note);
+        // 只在第一頁記錄「進入專案」，翻頁載入更早的隨手記不重複記錄
+        if ($before === '') {
+            $this->app->logger->log('project', 'project.view', Log::RESULT_SUCCESS, $uid, $this->app->auth->label(), null, $id, (string)$project['name']);
+        }
         return $this->render('projects/show', [
             'title' => (string)$project['name'],
             'project' => $project,
-            'can' => $this->authorizer()->abilities($uid, $id),
+            'can' => $can,
             'isAdmin' => (int)($this->app->auth->user()['is_super_admin'] ?? 0) === 1,
+            'keywords' => (new KeywordRepository($this->app->db))->list($id),
+            'notes' => $notes['items'],
+            'nextBefore' => $notes['next'],
+            'olderPage' => $before !== '',
         ]);
     }
 
@@ -145,47 +164,5 @@ final class ProjectController extends Controller
             'description_version' => (int)$project['description_version'],
             'permissions' => $this->authorizer()->abilities($uid, $id),
         ]);
-    }
-
-    /**
-     * 拒絕：回應與「找不到」完全相同，紀錄中則保留嘗試存取的專案編號供管理者查看。
-     * 紀錄不寫入專案名稱以外的內容；名稱只有最高權限管理者看得到。
-     */
-    private function deny(string $action, ?int $projectId): Response
-    {
-        $label = null;
-        if ($projectId !== null) {
-            $project = $this->projects()->findAny($projectId);
-            $label = $project === null ? null : (string)$project['name'];
-        }
-        $this->app->logger->log('project', $action, Log::RESULT_DENIED, $this->app->auth->userId(), $this->app->auth->label(),
-            null, $projectId !== null && $label !== null ? $projectId : null, $label);
-        return $this->app->request->wantsJson()
-            ? Response::json(['error' => '找不到資源'], 404)
-            : Response::html($this->app->plainPage('找不到頁面', '您要找的頁面不存在。'), 404);
-    }
-
-    private function validateName(string $name): ?string
-    {
-        if ($name === '') {
-            return '請輸入專案名稱。';
-        }
-        if (mb_strlen($name) > ProjectRepository::NAME_MAX) {
-            return '專案名稱不可超過 ' . ProjectRepository::NAME_MAX . ' 字。';
-        }
-        if (str_contains($name, "\n")) {
-            return '專案名稱不可換行。';
-        }
-        return null;
-    }
-
-    private function authorizer(): Authorizer
-    {
-        return new Authorizer($this->app->db);
-    }
-
-    private function projects(): ProjectRepository
-    {
-        return new ProjectRepository($this->app->db, $this->authorizer());
     }
 }

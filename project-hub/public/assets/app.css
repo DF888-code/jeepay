@@ -25,3 +25,4 @@
 /* 保留使用者輸入的換行（專案說明、隨手記）；CSP 禁止行內 style，因此一律用 class */
 .text-pre-wrap { white-space: pre-wrap; }
 .form-card { max-width: 760px; }
+.keyword-remove { width: .55em; height: .55em; }

@@ -24,6 +24,10 @@ final class View
     /** @param array<string, mixed> $vars */
     public function render(string $template, array $vars = [], ?string $layout = 'layout'): string
     {
+        if (array_key_exists('content', $vars)) {
+            // content 保留給版面放入頁面內容，若被覆蓋會讓整頁只剩該變數的文字
+            throw new RuntimeException('樣板變數名稱 content 為保留字');
+        }
         $content = $this->renderFile($template, $vars);
         if ($layout === null) {
             return $content;

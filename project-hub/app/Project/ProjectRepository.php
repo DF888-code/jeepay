@@ -100,6 +100,55 @@ final class ProjectRepository
         );
     }
 
+    /**
+     * 更新專案說明（樂觀併發控制）。
+     *
+     * 真正決定能否寫入的是「WHERE description_version = 使用者載入時的版本號」的條件式 UPDATE，
+     * 不是先查詢版本再比較；SELECT ... FOR UPDATE 只用來在同一交易中取得精確的「修改前內容」寫入歷史。
+     * 版本號必定遞增，因此內容相同也會影響 1 列，不會被誤判為衝突。
+     *
+     * @return int|null 成功時回傳新版本號；版本已被他人更新時回傳 null（不覆蓋）
+     */
+    public function updateDescription(int $id, int $expectedVersion, string $content, int $userId): ?int
+    {
+        return $this->db->transaction(function (Database $db) use ($id, $expectedVersion, $content, $userId): ?int {
+            $current = $db->one('SELECT description, description_version FROM projects WHERE id = ? AND deleted_at IS NULL FOR UPDATE', [$id]);
+            if ($current === null) {
+                return null;
+            }
+            $now = Clock::utc();
+            $updated = $db->run(
+                'UPDATE projects
+                    SET description = ?, description_norm = ?, description_version = description_version + 1, updated_by = ?, updated_at = ?
+                  WHERE id = ? AND deleted_at IS NULL AND description_version = ?',
+                [$content, TextNormalizer::normalize($content), $userId, $now, $id, $expectedVersion]
+            )->rowCount();
+            if ($updated !== 1) {
+                return null;
+            }
+            $newVersion = $expectedVersion + 1;
+            $db->run(
+                'INSERT INTO project_description_history (project_id, version_before, version_after, content_before, content_after, changed_by, changed_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?)',
+                [$id, $expectedVersion, $newVersion, (string)$current['description'], $content, $userId, $now]
+            );
+            return $newVersion;
+        });
+    }
+
+    /** @return list<array<string, mixed>> 說明版本歷史（新到舊）。只供檢視，不提供修改或刪除。 */
+    public function descriptionHistory(int $id): array
+    {
+        return $this->db->all(
+            'SELECT h.version_before, h.version_after, h.content_before, h.content_after, h.changed_at, u.display_name AS changed_by_name
+               FROM project_description_history h
+               JOIN users u ON u.id = h.changed_by
+              WHERE h.project_id = ?
+           ORDER BY h.version_after DESC',
+            [$id]
+        );
+    }
+
     /** 軟刪除：資料保留，可由最高權限管理者在後台還原（決議 #7）。 */
     public function softDelete(int $id, int $userId): bool
     {

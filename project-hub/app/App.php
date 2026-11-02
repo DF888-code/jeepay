@@ -12,6 +12,7 @@ use ProjectHub\Controllers\AccountController;
 use ProjectHub\Controllers\AdminUserController;
 use ProjectHub\Controllers\AuthController;
 use ProjectHub\Controllers\AdminProjectController;
+use ProjectHub\Controllers\ProjectContentController;
 use ProjectHub\Controllers\ProjectController;
 use ProjectHub\Database\Migrator;
 use ProjectHub\Controllers\InstallController;
@@ -70,6 +71,15 @@ final class App
             'GET /projects/{id}' => [self::ACCESS_AUTH, ProjectController::class, 'show'],
             'POST /projects/{id}/rename' => [self::ACCESS_AUTH, ProjectController::class, 'rename'],
             'POST /projects/{id}/delete' => [self::ACCESS_AUTH, ProjectController::class, 'delete'],
+            'GET /projects/{id}/description/edit' => [self::ACCESS_AUTH, ProjectContentController::class, 'editDescription'],
+            'POST /projects/{id}/description' => [self::ACCESS_AUTH, ProjectContentController::class, 'updateDescription'],
+            'GET /projects/{id}/history' => [self::ACCESS_AUTH, ProjectContentController::class, 'history'],
+            'POST /projects/{id}/keywords' => [self::ACCESS_AUTH, ProjectContentController::class, 'addKeyword'],
+            'POST /projects/{id}/keywords/{id}/delete' => [self::ACCESS_AUTH, ProjectContentController::class, 'deleteKeyword'],
+            'POST /projects/{id}/notes' => [self::ACCESS_AUTH, ProjectContentController::class, 'createNote'],
+            'POST /projects/{id}/notes/{id}/update' => [self::ACCESS_AUTH, ProjectContentController::class, 'updateNote'],
+            'POST /projects/{id}/notes/{id}/delete' => [self::ACCESS_AUTH, ProjectContentController::class, 'deleteNote'],
+            'GET /api/projects/{id}/notes' => [self::ACCESS_AUTH, ProjectContentController::class, 'apiNotes'],
             'GET /api/projects' => [self::ACCESS_AUTH, ProjectController::class, 'apiList'],
             'GET /api/projects/{id}' => [self::ACCESS_AUTH, ProjectController::class, 'apiShow'],
             'GET /login' => [self::ACCESS_GUEST, AuthController::class, 'showLogin'],
