@@ -24,6 +24,7 @@
 | [docs/05-development-plan.md](docs/05-development-plan.md) | 12 階段開發計畫、各階段報告 |
 | [docs/06-open-questions.md](docs/06-open-questions.md) | 待確認事項與決議 |
 | [docs/07-deployment.md](docs/07-deployment.md) | InfinityFree 部署步驟、緊急重設、部署安全檢查清單 |
+| [docs/08-note-attachments.md](docs/08-note-attachments.md) | 隨手記檔案與圖片上傳（規格七之一）設計與主機限制 |
 
 ## 目錄
 
