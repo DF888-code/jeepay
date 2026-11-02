@@ -2,7 +2,7 @@
 <nav aria-label="breadcrumb" class="mb-2">
   <ol class="breadcrumb small mb-0">
     <li class="breadcrumb-item"><a href="/">專案</a></li>
-    <li class="breadcrumb-item"><a href="/projects/<?= $pid ?>"><?= e($project['name']) ?></a></li>
+    <li class="breadcrumb-item text-truncate"><a href="/projects/<?= $pid ?>"><?= e($project['name']) ?></a></li>
     <li class="breadcrumb-item active" aria-current="page">版本歷史</li>
   </ol>
 </nav>

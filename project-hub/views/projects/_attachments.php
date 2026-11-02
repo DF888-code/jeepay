@@ -23,7 +23,7 @@ $files = array_values(array_filter($items, static fn(array $a): bool => $a['kind
           <?php if ($n['can_delete']): ?>
             <form method="post" action="/projects/<?= (int)$project['id'] ?>/attachments/<?= $aid ?>/delete" class="position-absolute top-0 end-0 m-1" data-confirm="確定要刪除圖片「<?= e($a['original_name']) ?>」嗎？">
               <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
-              <button type="submit" class="btn btn-sm btn-light border py-0 px-1" aria-label="刪除圖片 <?= e($a['original_name']) ?>">×</button>
+              <button type="submit" class="btn btn-sm btn-light border py-0 px-1 image-remove" aria-label="刪除圖片 <?= e($a['original_name']) ?>">×</button>
             </form>
           <?php endif; ?>
         </figure>

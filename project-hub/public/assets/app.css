@@ -67,3 +67,34 @@
 .progress-w-90 { width: 90%; }
 .progress-w-95 { width: 95%; }
 .progress-w-100 { width: 100%; }
+
+/* =====================================================================
+ * 階段 11：RWD 調整（以 375 / 768 / 1280 寬度檢查，見 docs/05 階段 11 報告）
+ * ===================================================================== */
+
+/* 長網址、連續英數字（專案名稱、關鍵字、帳號）不可撐破版面 */
+h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6, .card-header, .alert, .list-group-item, .form-check-label {
+  overflow-wrap: anywhere;
+}
+/* 麵包屑是 flex 項目，必須允許縮小才能截斷 */
+.breadcrumb { flex-wrap: nowrap; }
+.breadcrumb-item { min-width: 0; flex-shrink: 0; }
+.breadcrumb-item.text-truncate { flex-shrink: 1; max-width: 100%; }
+.breadcrumb-item.text-truncate > a { overflow: hidden; text-overflow: ellipsis; }
+.keyword-badge { white-space: normal; text-align: start; max-width: 100%; overflow-wrap: anywhere; line-height: 1.4; }
+
+/* 手機：觸控目標至少約 40px（WCAG 2.2 最低 24px，iOS 建議 44px），避免誤觸相鄰按鈕 */
+@media (max-width: 575.98px) {
+  .btn, .btn-sm, .form-control-sm, .form-select-sm { min-height: 2.5rem; }
+  .btn-sm { padding-top: .375rem; padding-bottom: .375rem; }
+  .form-check-input { width: 1.35em; height: 1.35em; margin-top: .1em; }
+  .form-check { min-height: 2rem; padding-left: 2em; }
+  .form-check .form-check-input { margin-left: -2em; }
+  .form-switch { padding-left: 3em; }
+  .form-switch .form-check-input { margin-left: -3em; width: 2.6em; }
+  .note-action { min-height: 2.5rem; padding: 0 .5rem !important; }
+  .keyword-remove { padding: .6rem; }
+  .image-remove { min-height: 2.25rem; min-width: 2.25rem; }
+  /* 表單 16px 字級：iOS Safari 小於 16px 時會在聚焦時自動放大頁面 */
+  .form-control, .form-select, .form-control-sm, .form-select-sm { font-size: 1rem; }
+}

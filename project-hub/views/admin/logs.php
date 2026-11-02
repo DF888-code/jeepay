@@ -7,7 +7,15 @@ require __DIR__ . '/_nav.php';
 $resultClass = ['success' => 'text-bg-success', 'failure' => 'text-bg-warning', 'denied' => 'text-bg-danger'];
 $maxHour = max(1, max($stats['hours']));
 ?>
-<form method="get" action="/admin/logs" class="card shadow-sm mb-3">
+<?php
+// 手機版：篩選條件預設摺疊，只顯示目前條件摘要，避免統計與紀錄被推到很下面（docs/02 第 9 節）
+$filterSummary = ($filter['from'] === $filter['to'] ? $filter['from'] : $filter['from'] . ' ～ ' . $filter['to']);
+?>
+<button class="btn btn-outline-secondary w-100 mb-2 d-md-none d-flex justify-content-between align-items-center" type="button"
+        data-bs-toggle="collapse" data-bs-target="#log-filter" aria-expanded="false" aria-controls="log-filter">
+  <span>篩選條件：<?= e($filterSummary) ?></span><span aria-hidden="true">▾</span>
+</button>
+<form method="get" action="/admin/logs" class="card shadow-sm mb-3 collapse d-md-block" id="log-filter">
   <div class="card-body">
     <div class="row g-3 align-items-end">
       <div class="col-12 col-md-auto">

@@ -8,7 +8,7 @@ $fields = ['can_view' => ['查看', 'g_view', 'view'], 'can_edit' => ['編輯', 
 <nav aria-label="breadcrumb">
   <ol class="breadcrumb small">
     <li class="breadcrumb-item"><a href="/admin/projects">專案管理</a></li>
-    <li class="breadcrumb-item active text-break" aria-current="page"><?= e($project['name']) ?></li>
+    <li class="breadcrumb-item active text-truncate" aria-current="page"><?= e($project['name']) ?></li>
   </ol>
 </nav>
 <h2 class="h5 mb-3">授權名單：<?= e($project['name']) ?></h2>

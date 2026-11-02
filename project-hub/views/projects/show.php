@@ -60,7 +60,7 @@
     <?php else: ?>
       <div class="d-flex flex-wrap gap-2 mb-3">
         <?php foreach ($keywords as $k): ?>
-          <span class="badge rounded-pill text-bg-light border d-inline-flex align-items-center gap-1 fs-6 fw-normal">
+          <span class="badge rounded-pill text-bg-light border d-inline-flex align-items-center gap-1 fs-6 fw-normal keyword-badge">
             <?= e($k['keyword']) ?>
             <?php if ($can['edit']): ?>
               <form method="post" action="/projects/<?= (int)$project['id'] ?>/keywords/<?= (int)$k['id'] ?>/delete" class="d-inline m-0">
@@ -113,10 +113,10 @@
               </span>
               <span class="d-flex gap-2">
                 <?php if ($n['can_edit']): ?>
-                  <button type="button" class="btn btn-sm btn-link p-0" data-bs-toggle="collapse" data-bs-target="#note-edit-<?= $nid ?>">修改</button>
+                  <button type="button" class="btn btn-sm btn-link p-0 note-action" data-bs-toggle="collapse" data-bs-target="#note-edit-<?= $nid ?>">修改</button>
                 <?php endif; ?>
                 <?php if ($n['can_delete']): ?>
-                  <button type="button" class="btn btn-sm btn-link link-danger p-0" data-bs-toggle="modal" data-bs-target="#note-del-<?= $nid ?>">刪除</button>
+                  <button type="button" class="btn btn-sm btn-link link-danger p-0 note-action" data-bs-toggle="modal" data-bs-target="#note-del-<?= $nid ?>">刪除</button>
                 <?php endif; ?>
               </span>
             </header>
