@@ -131,6 +131,7 @@ if ($method === 'POST' && $path === '/brevo') {
         out(401, ['code' => 'unauthorized', 'message' => 'Key not found']);
     }
     file_put_contents($dir . '/brevo_last.json', $raw);
+    file_put_contents($dir . '/brevo_all.jsonl', json_encode(json_decode($raw, true), JSON_UNESCAPED_UNICODE) . "\n", FILE_APPEND);
     out(201, ['messageId' => '<fake@brevo>']);
 }
 

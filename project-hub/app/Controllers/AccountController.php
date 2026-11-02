@@ -10,6 +10,8 @@ use ProjectHub\Auth\Passwords;
 use ProjectHub\Auth\Totp;
 use ProjectHub\Http\Request;
 use ProjectHub\Http\Response;
+use ProjectHub\Mail\Message;
+use ProjectHub\Recovery\RecoveryTokenRepository;
 use ProjectHub\Support\Clock;
 
 /**
@@ -22,11 +24,89 @@ final class AccountController extends Controller
 
     public function index(Request $request): Response
     {
+        $user = (array)$this->app->auth->user();
+        $isAdmin = (int)$user['is_super_admin'] === 1;
         return $this->render('account/index', [
             'title' => '帳號設定',
-            'user' => $this->app->auth->user(),
+            'user' => $user,
             'minLength' => $this->app->settings->int('security.password_min_length'),
+            'isSuperAdmin' => $isAdmin,
+            'recoveryPending' => $isAdmin ? (new RecoveryTokenRepository($this->app->db))->pending((int)$user['id']) : [],
+            'mailEnabled' => $isAdmin && $this->app->mailer()->enabled(),
         ]);
+    }
+
+    /**
+     * 變更救援 Email（只有最高權限管理者）：每次都要輸入目前驗證碼，完成後通知新舊 Email，
+     * 並讓尚未使用的救援連結失效（docs/04 第 3.3 節）。
+     */
+    public function changeRecoveryEmail(Request $request): Response
+    {
+        $user = (array)$this->app->auth->user();
+        if ((int)$user['is_super_admin'] !== 1) {
+            return Response::html($this->app->plainPage('找不到頁面', '您要找的頁面不存在。'), 404);
+        }
+        $id = (int)$user['id'];
+        $label = (string)$user['username'];
+        $key = $this->app->throttle->accountKey($label);
+        if ($this->app->throttle->isLocked($key, $request->ip())) {
+            return $this->back('/account', 'error', '嘗試次數過多，請稍後再試。');
+        }
+        $email = trim($request->input('email'));
+        if ($email === '' || mb_strlen($email) > 254 || filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
+            return $this->back('/account', 'error', '救援 Email 格式不正確。');
+        }
+        $secret = $this->app->crypto->decrypt((string)$user['totp_secret_enc'], 'totp');
+        $lastStep = $user['totp_last_used_step'] === null ? null : (int)$user['totp_last_used_step'];
+        $step = Totp::match($secret, $request->input('code'), $this->totpWindow(), $lastStep, Clock::now());
+        if ($step === null || !$this->app->users->consumeTotpStep($id, $step)) {
+            $this->app->throttle->record($key, $request->ip(), LoginThrottle::STAGE_REAUTH, false);
+            $this->app->logger->log('security', 'recovery.email_change', Log::RESULT_FAILURE, $id, $label, '驗證碼錯誤');
+            return $this->back('/account', 'error', '驗證碼錯誤或已使用過，請輸入驗證器上的最新驗證碼。');
+        }
+        $old = (string)($user['email'] ?? '');
+        if (strcasecmp($old, $email) === 0) {
+            return $this->back('/account', 'success', '救援 Email 沒有變更。');
+        }
+        $this->app->users->updateProfile($id, (string)$user['display_name'], $email);
+        (new RecoveryTokenRepository($this->app->db))->invalidateAll($id);
+        $this->app->logger->log('security', 'recovery.email_change', Log::RESULT_SUCCESS, $id, $label,
+            ($old === '' ? '（未設定）' : self::maskEmail($old)) . ' → ' . self::maskEmail($email));
+
+        $site = $this->app->settings->string('system.site_name');
+        $text = "您好：\n\n{$site} 管理者帳號「{$label}」的救援 Email 已變更為 " . self::maskEmail($email) . "。\n"
+            . '變更時間：' . Clock::display(Clock::utc(), $this->app->settings->string('system.timezone')) . '，來源 IP：' . $request->ip() . "\n\n"
+            . '若這不是您本人的操作，表示管理者帳號可能已被他人使用，請立即處理。';
+        $sent = true;
+        foreach (array_unique(array_filter([$old, $email])) as $to) {
+            try {
+                $this->app->mailer()->send(new Message($to, "【{$site}】救援 Email 已變更", $text));
+            } catch (\Throwable $e) {
+                $sent = false;
+                error_log('[project-hub] 救援 Email 變更通知寄送失敗：' . $e->getMessage());
+            }
+        }
+        return $this->back('/account', 'success', '救援 Email 已更新，尚未使用的救援連結已全部失效。'
+            . ($sent ? '已寄送通知到新舊 Email。' : '（通知信寄送失敗，請檢查寄信設定。）'));
+    }
+
+    /** 取消所有尚未使用的救援申請（本人仍能登入時，用來阻止他人冒用救援）。 */
+    public function cancelRecovery(Request $request): Response
+    {
+        $user = (array)$this->app->auth->user();
+        if ((int)$user['is_super_admin'] !== 1) {
+            return Response::html($this->app->plainPage('找不到頁面', '您要找的頁面不存在。'), 404);
+        }
+        $n = (new RecoveryTokenRepository($this->app->db))->invalidateAll((int)$user['id']);
+        $this->app->logger->log('security', 'recovery.cancel', Log::RESULT_SUCCESS, (int)$user['id'], (string)$user['username'], "取消 {$n} 個救援申請");
+        return $this->back('/account', 'success', $n > 0 ? "已取消 {$n} 個救援申請，信中的連結已失效。" : '目前沒有待處理的救援申請。');
+    }
+
+    /** 紀錄中只保存部分遮蔽的 Email，避免紀錄本身成為個資外洩來源 */
+    private static function maskEmail(string $email): string
+    {
+        [$local, $domain] = array_pad(explode('@', $email, 2), 2, '');
+        return mb_substr($local, 0, 2) . str_repeat('*', max(1, mb_strlen($local) - 2)) . '@' . $domain;
     }
 
     public function changePassword(Request $request): Response

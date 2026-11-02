@@ -19,6 +19,7 @@ final class SettingsRegistry
         'security' => '登入與安全',
         'attachments' => '附件',
         'logs' => '歷史紀錄',
+        'recovery' => 'Email 救援（最高權限管理者）',
         'search' => '搜尋',
         'mail' => '寄信',
         'storage' => '附件儲存位置',
@@ -96,6 +97,18 @@ final class SettingsRegistry
             'security.password_min_length' => [
                 'category' => 'security', 'label' => '密碼最短長度', 'type' => 'int', 'default' => 10,
                 'min' => 8, 'max' => 64,
+            ],
+            'recovery.token_minutes' => [
+                'category' => 'recovery', 'label' => '救援連結有效時間（分鐘）', 'type' => 'int', 'default' => 30, 'min' => 10, 'max' => 120,
+            ],
+            'recovery.both_cooldown_minutes' => [
+                'category' => 'recovery', 'label' => '「密碼與驗證器都遺失」的等待時間（分鐘）', 'type' => 'int', 'default' => 30,
+                'min' => 0, 'max' => 1440,
+                'help' => '決議 #19：只靠 Email 的救援風險最高，連結在申請後需等待這段時間才能使用；期間本人若仍能登入可在帳號設定取消。',
+            ],
+            'recovery.requests_per_hour' => [
+                'category' => 'recovery', 'label' => '每小時最多申請次數（同一帳號）', 'type' => 'int', 'default' => 3, 'min' => 1, 'max' => 20,
+                'help' => '超過時不再寄信（畫面回應不變，避免被拿來探測帳號）；同一 IP 上限為此數值的 3 倍。',
             ],
             'mail.driver' => [
                 'category' => 'mail', 'page' => 'mail', 'label' => '寄信方式', 'type' => 'enum', 'default' => 'none',

@@ -18,6 +18,7 @@ use ProjectHub\Controllers\AdminProjectController;
 use ProjectHub\Controllers\ProjectContentController;
 use ProjectHub\Controllers\SearchController;
 use ProjectHub\Controllers\ProjectController;
+use ProjectHub\Controllers\RecoveryController;
 use ProjectHub\Database\Migrator;
 use ProjectHub\Controllers\InstallController;
 use ProjectHub\Http\Request;
@@ -46,6 +47,7 @@ final class App
     public const ACCESS_INSTALL = 'install';  // 安裝流程，自行檢查
     public const ACCESS_ADMIN = 'admin';      // 完整登入且為最高權限管理者（管理後台）
     public const ACCESS_PASSWORD_CHANGE = 'password_change'; // 必須先變更臨時密碼
+    public const ACCESS_PUBLIC = 'public';    // 任何登入狀態都可使用（Email 救援連結）
 
     public Config $config;
     public Database $db;
@@ -97,6 +99,12 @@ final class App
             'GET /api/search' => [self::ACCESS_AUTH, SearchController::class, 'api'],
             'GET /api/projects' => [self::ACCESS_AUTH, ProjectController::class, 'apiList'],
             'GET /api/projects/{id}' => [self::ACCESS_AUTH, ProjectController::class, 'apiShow'],
+            'GET /recovery' => [self::ACCESS_GUEST, RecoveryController::class, 'showRequest'],
+            'POST /recovery' => [self::ACCESS_GUEST, RecoveryController::class, 'request'],
+            'GET /recovery/confirm' => [self::ACCESS_PUBLIC, RecoveryController::class, 'showConfirm'],
+            'POST /recovery/confirm' => [self::ACCESS_PUBLIC, RecoveryController::class, 'confirm'],
+            'POST /account/recovery-email' => [self::ACCESS_AUTH, AccountController::class, 'changeRecoveryEmail'],
+            'POST /account/recovery/cancel' => [self::ACCESS_AUTH, AccountController::class, 'cancelRecovery'],
             'GET /login' => [self::ACCESS_GUEST, AuthController::class, 'showLogin'],
             'POST /login' => [self::ACCESS_GUEST, AuthController::class, 'login'],
             'GET /login/totp' => [self::ACCESS_TOTP, AuthController::class, 'showTotp'],
@@ -273,6 +281,7 @@ final class App
             self::ACCESS_TOTP => $stage === AuthState::TOTP,
             self::ACCESS_ENROLL => $stage === AuthState::ENROLL,
             self::ACCESS_SESSION => $stage !== AuthState::NONE,
+            self::ACCESS_PUBLIC => true,
             self::ACCESS_PASSWORD_CHANGE => $stage === AuthState::PASSWORD_CHANGE,
             self::ACCESS_AUTH => $stage === AuthState::FULL,
             self::ACCESS_ADMIN => false,
@@ -389,8 +398,11 @@ final class App
         $response
             ->withHeader('X-Content-Type-Options', 'nosniff')
             ->withHeader('X-Frame-Options', 'DENY')
-            ->withHeader('Referrer-Policy', 'same-origin')
             ->withHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+        if (!isset($response->headers['Referrer-Policy'])) {
+            // 救援確認頁會設定更嚴格的 no-referrer，不可覆蓋
+            $response->withHeader('Referrer-Policy', 'same-origin');
+        }
         if (!isset($response->headers['Content-Security-Policy'])) {
             // 附件回應有自己更嚴格的 CSP（含 sandbox），不可被一般頁面的設定覆蓋
             $response->withHeader('Content-Security-Policy', "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");

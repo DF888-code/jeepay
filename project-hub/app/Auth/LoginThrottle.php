@@ -20,6 +20,7 @@ final class LoginThrottle
     public const STAGE_PASSWORD = 'password';
     public const STAGE_TOTP = 'totp';
     public const STAGE_REAUTH = 'reauth';
+    public const STAGE_RECOVERY = 'recovery';
 
     public function __construct(private Database $db, private Settings $settings, private Crypto $crypto)
     {

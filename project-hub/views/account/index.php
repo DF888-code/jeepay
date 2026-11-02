@@ -77,5 +77,51 @@
         </form>
       </div>
     </section>
+
+    <?php if (!empty($isSuperAdmin)): ?>
+    <section class="card shadow-sm mt-4" data-recovery-settings>
+      <div class="card-header fw-semibold">Email 救援設定</div>
+      <div class="card-body">
+        <p class="small text-body-secondary">忘記密碼或遺失驗證器時，可在登入頁點「最高權限管理者救援」，系統會把救援連結寄到這個 Email。請使用只有您能存取、且開啟兩步驟驗證的信箱。</p>
+        <p class="mb-2">目前救援 Email：<strong><?= ($user['email'] ?? '') !== '' ? e($user['email']) : '尚未設定' ?></strong></p>
+        <?php if (empty($mailEnabled)): ?>
+          <div class="alert alert-warning small py-2">尚未設定寄信方式，救援信無法寄出。請到「管理後台 → 系統設定 → 寄信設定」設定並寄送測試信。</div>
+        <?php endif; ?>
+        <form method="post" action="/account/recovery-email" class="row g-2 align-items-end">
+          <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+          <div class="col-12 col-sm-7">
+            <label for="rc-email" class="form-label small mb-1">新的救援 Email</label>
+            <input id="rc-email" type="email" name="email" class="form-control" maxlength="254" autocomplete="email" required>
+          </div>
+          <div class="col-7 col-sm-3">
+            <label for="rc-email-code" class="form-label small mb-1">驗證碼</label>
+            <input id="rc-email-code" name="code" class="form-control code-input" inputmode="numeric" pattern="[0-9 ]*" maxlength="7" autocomplete="one-time-code" required>
+          </div>
+          <div class="col-5 col-sm-2">
+            <button type="submit" class="btn btn-outline-primary w-100">變更</button>
+          </div>
+          <div class="col-12 form-text">每次變更都需要輸入驗證碼；變更後會通知新舊 Email，並讓尚未使用的救援連結失效。</div>
+        </form>
+
+        <h2 class="h6 mt-4">待處理的救援申請</h2>
+        <?php if ($recoveryPending === []): ?>
+          <p class="small text-body-secondary mb-0" data-recovery-pending="0">目前沒有。</p>
+        <?php else: ?>
+          <div class="alert alert-warning small" data-recovery-pending="<?= count($recoveryPending) ?>">
+            有 <?= count($recoveryPending) ?> 個尚未使用的救援申請。若不是您本人申請，請立即取消，並確認救援信箱是否遭他人存取。
+            <ul class="mb-0 mt-1">
+              <?php foreach ($recoveryPending as $p): ?>
+                <li><?= e(\ProjectHub\Controllers\RecoveryController::PURPOSE_LABELS[$p['purpose']] ?? $p['purpose']) ?>：<?= e(\ProjectHub\Support\Clock::display($p['created_at'], $timezone)) ?> 申請，IP <?= e((string)$p['request_ip']) ?></li>
+              <?php endforeach; ?>
+            </ul>
+          </div>
+          <form method="post" action="/account/recovery/cancel" class="m-0" data-confirm="確定要取消所有救援申請嗎？信中的連結會立即失效。">
+            <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+            <button type="submit" class="btn btn-outline-danger btn-sm">取消所有救援申請</button>
+          </form>
+        <?php endif; ?>
+      </div>
+    </section>
+    <?php endif; ?>
   </div>
 </div>

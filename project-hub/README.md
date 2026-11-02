@@ -17,7 +17,8 @@
 | 7 全站搜尋及簡繁轉換 | 已完成（繁簡與兩岸用語互搜、權限內搜尋、索引重建） |
 | 8 歷史操作紀錄（查詢介面） | 已完成（篩選、統計、每小時分布、CSV 匯出、保存期限） |
 | 9 系統設定中心（含寄信、Google Drive 附件儲存） | 已完成（一般設定、SMTP／Brevo 寄信與測試、Google Drive 連結與儲存位置切換） |
-| 10 Email 救援流程 | 下一步 |
+| 10 Email 救援流程 | 已完成（三種救援情境、單次 Token、冷卻與通知、救援 Email 設定） |
+| 11 RWD 優化 | 下一步 |
 
 ## 文件
 
@@ -63,7 +64,7 @@ PH_TEST_DSN="mysql:host=127.0.0.1;dbname=ph_test;charset=utf8mb4" PH_TEST_USER=p
 php tests/schema_smoke_test.php
 ```
 
-最近一次結果（MariaDB 10.11、PHP 8.3）：單元 15、整合 135（登入 27＋管理後台 23＋專案與雙重授權 17＋說明／關鍵字／隨手記 14＋附件 15＋搜尋 12＋歷史紀錄 10＋系統設定 17）、Schema 26 項，全部通過。整合測試會啟動假的 Google／Brevo／SMTP 服務（`tests/Fakes/`），不需連網。
+最近一次結果（MariaDB 10.11、PHP 8.3）：單元 15、整合 146（登入 27＋管理後台 23＋專案與雙重授權 17＋說明／關鍵字／隨手記 14＋附件 15＋搜尋 12＋歷史紀錄 10＋系統設定 17＋Email 救援 11）、Schema 26 項，全部通過。整合測試會啟動假的 Google／Brevo／SMTP 服務（`tests/Fakes/`），不需連網。
 
 ## 部署
 

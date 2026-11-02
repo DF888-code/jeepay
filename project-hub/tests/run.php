@@ -149,6 +149,8 @@ try {
     $failures += run_registered_tests('整合測試：歷史操作紀錄（階段 8）');
     require __DIR__ . '/Integration/SettingsTest.php';
     $failures += run_registered_tests('整合測試：系統設定中心、寄信、Google Drive（階段 9）');
+    require __DIR__ . '/Integration/RecoveryTest.php';
+    $failures += run_registered_tests('整合測試：最高權限管理者 Email 救援（階段 10）');
 } finally {
     proc_terminate($server);
     proc_terminate($fakeServer);
