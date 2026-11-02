@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace ProjectHub\Settings;
 
+use ProjectHub\Support\Clock;
 use ProjectHub\Support\Database;
 use RuntimeException;
 use Throwable;
@@ -56,11 +57,13 @@ final class Settings
     /**
      * 依定義驗證並轉型；不合法回傳 null。
      *
-     * @param array{type:string,min?:int,max?:int} $def
+     * @param array{type:string,min?:int,max?:int,options?:array<string,string>,format?:string} $def
      */
     public static function validate(array $def, mixed $value): mixed
     {
         switch ($def['type']) {
+            case 'enum':
+                return is_string($value) && array_key_exists($value, $def['options'] ?? []) ? $value : null;
             case 'int':
                 if (is_string($value) && preg_match('/^-?\d+$/', $value)) {
                     $value = (int)$value;
@@ -73,7 +76,12 @@ final class Settings
                 }
                 return $value;
             case 'string':
-                if (!is_string($value) || (isset($def['max']) && mb_strlen($value) > $def['max'])) {
+                if (!is_string($value) || (isset($def['max']) && mb_strlen($value) > $def['max'])
+                    || preg_match('/[\x00-\x1F\x7F]/', $value)) {
+                    // 不允許換行等控制字元：設定值可能被放進信件標頭，換行會造成標頭注入
+                    return null;
+                }
+                if ($value !== '' && isset($def['format']) && !self::validFormat($def['format'], $value)) {
                     return null;
                 }
                 return $value;
@@ -87,6 +95,36 @@ final class Settings
             default:
                 return null;
         }
+    }
+
+    private static function validFormat(string $format, string $value): bool
+    {
+        return match ($format) {
+            'email' => filter_var($value, FILTER_VALIDATE_EMAIL) !== false,
+            'host' => (bool)preg_match('/^[A-Za-z0-9]([A-Za-z0-9.-]{0,251}[A-Za-z0-9])?$/', $value),
+            'google_client_id' => (bool)preg_match('/^[A-Za-z0-9._-]{10,200}$/', $value),
+            default => false,
+        };
+    }
+
+    /**
+     * 儲存設定：與預設值相同時刪除覆寫列，讓日後調整預設值能自動套用。
+     * 呼叫端必須先以 validate() 驗證。
+     */
+    public function set(string $key, mixed $value, ?int $userId): void
+    {
+        $def = SettingsRegistry::definitions()[$key] ?? throw new RuntimeException('未定義的設定：' . $key);
+        $this->overrides();
+        if ($value === $def['default']) {
+            $this->db->run('DELETE FROM system_settings WHERE setting_key = ?', [$key]);
+            unset($this->overrides[$key]);
+            return;
+        }
+        $this->db->run(
+            'REPLACE INTO system_settings (setting_key, value_json, updated_by, updated_at) VALUES (?, ?, ?, ?)',
+            [$key, json_encode($value, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR), $userId, Clock::utc()]
+        );
+        $this->overrides[$key] = $value;
     }
 
     /** @return array<string, mixed> */

@@ -52,6 +52,28 @@ $tmp = __DIR__ . '/tmp';
 $storage = $tmp . '/storage';
 @mkdir($storage, 0700, true);
 @unlink($storage . '/installed.lock');
+// 假外部服務：Google OAuth／Drive、Brevo（HTTP）與 SMTP，讓整合測試不需連網也不需真實帳號
+$fakeDir = $tmp . '/fake';
+if (is_dir($fakeDir)) {
+    foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($fakeDir, FilesystemIterator::SKIP_DOTS), RecursiveIteratorIterator::CHILD_FIRST) as $f) {
+        $f->isDir() ? rmdir($f->getPathname()) : unlink($f->getPathname());
+    }
+}
+@mkdir($fakeDir, 0700, true);
+$fakePort = 19000 + random_int(0, 499);
+$smtpPort = 19500 + random_int(0, 499);
+$fakeServer = proc_open(
+    [PHP_BINARY, '-S', "127.0.0.1:{$fakePort}", __DIR__ . '/Fakes/fake_services.php'],
+    [0 => ['pipe', 'r'], 1 => ['file', $tmp . '/fake.log', 'w'], 2 => ['file', $tmp . '/fake.log', 'a']],
+    $fakePipes, null, array_merge(getenv(), ['FAKE_STATE_DIR' => $fakeDir])
+);
+$smtpServer = proc_open(
+    [PHP_BINARY, __DIR__ . '/Fakes/fake_smtp.php', (string)$smtpPort, $fakeDir],
+    [0 => ['pipe', 'r'], 1 => ['file', $tmp . '/fake_smtp.log', 'w'], 2 => ['file', $tmp . '/fake_smtp.log', 'a']],
+    $smtpPipes
+);
+$fakeBase = "http://127.0.0.1:{$fakePort}";
+
 $appKey = random_bytes(32);
 $installToken = bin2hex(random_bytes(20));
 file_put_contents($tmp . '/config.php', '<?php return ' . var_export([
@@ -62,7 +84,17 @@ file_put_contents($tmp . '/config.php', '<?php return ' . var_export([
     'db' => $db,
     'storage_dir' => $storage,
     'session_cookie' => 'phsid',
+    'service_endpoints' => [
+        'google_auth' => $fakeBase . '/auth',
+        'google_token' => $fakeBase . '/token',
+        'google_revoke' => $fakeBase . '/revoke',
+        'google_api' => $fakeBase . '/drive/v3',
+        'google_upload' => $fakeBase . '/upload/drive/v3',
+        'brevo' => $fakeBase . '/brevo',
+    ],
 ], true) . ';');
+
+
 
 $port = 18000 + random_int(0, 999);
 $server = proc_open(
@@ -72,13 +104,20 @@ $server = proc_open(
     null,
     array_merge(getenv(), ['PH_CONFIG_FILE' => $tmp . '/config.php'])
 );
-for ($i = 0; $i < 50; $i++) {
-    $fp = @fsockopen('127.0.0.1', $port);
-    if ($fp !== false) {
-        fclose($fp);
-        break;
+foreach ([$port, $fakePort, $smtpPort] as $p) {
+    for ($i = 0; $i < 50; $i++) {
+        // SMTP 假伺服器一次只服務一個連線，因此只確認 HTTP 伺服器；SMTP 等待其啟動即可
+        if ($p === $smtpPort) {
+            usleep(300_000);
+            break;
+        }
+        $fp = @fsockopen('127.0.0.1', $p);
+        if ($fp !== false) {
+            fclose($fp);
+            break;
+        }
+        usleep(100_000);
     }
-    usleep(100_000);
 }
 
 $GLOBALS['PH_CTX'] = [
@@ -88,6 +127,9 @@ $GLOBALS['PH_CTX'] = [
     'appKey' => $appKey,
     'installToken' => $installToken,
     'storage' => $storage,
+    'fakeDir' => $fakeDir,
+    'fakeBase' => $fakeBase,
+    'smtpPort' => $smtpPort,
 ];
 
 try {
@@ -105,8 +147,12 @@ try {
     $failures += run_registered_tests('整合測試：全站搜尋與簡繁轉換（階段 7）');
     require __DIR__ . '/Integration/LogTest.php';
     $failures += run_registered_tests('整合測試：歷史操作紀錄（階段 8）');
+    require __DIR__ . '/Integration/SettingsTest.php';
+    $failures += run_registered_tests('整合測試：系統設定中心、寄信、Google Drive（階段 9）');
 } finally {
     proc_terminate($server);
+    proc_terminate($fakeServer);
+    proc_terminate($smtpServer);
     @unlink($tmp . '/config.php');
 }
 

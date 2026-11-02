@@ -41,3 +41,29 @@
 .hour-chart .bar-pm { fill: var(--bs-warning); }
 .hour-chart .bar-label { font-size: 10px; fill: var(--bs-secondary-color); }
 .hour-chart .bar-axis { stroke: var(--bs-border-color); }
+
+/* 系統設定中心（階段 9） */
+.setting-number { max-width: 12rem; }
+.mail-transcript { white-space: pre-wrap; word-break: break-all; max-height: 20rem; overflow: auto; }
+/* 進度條寬度：CSP 禁止 inline style，以 5% 為單位的 class 代替 */
+.progress-w-0 { width: 0%; }
+.progress-w-5 { width: 5%; }
+.progress-w-10 { width: 10%; }
+.progress-w-15 { width: 15%; }
+.progress-w-20 { width: 20%; }
+.progress-w-25 { width: 25%; }
+.progress-w-30 { width: 30%; }
+.progress-w-35 { width: 35%; }
+.progress-w-40 { width: 40%; }
+.progress-w-45 { width: 45%; }
+.progress-w-50 { width: 50%; }
+.progress-w-55 { width: 55%; }
+.progress-w-60 { width: 60%; }
+.progress-w-65 { width: 65%; }
+.progress-w-70 { width: 70%; }
+.progress-w-75 { width: 75%; }
+.progress-w-80 { width: 80%; }
+.progress-w-85 { width: 85%; }
+.progress-w-90 { width: 90%; }
+.progress-w-95 { width: 95%; }
+.progress-w-100 { width: 100%; }

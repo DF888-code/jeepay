@@ -5,20 +5,25 @@ declare(strict_types=1);
 namespace ProjectHub\Attachment;
 
 /**
- * 附件實體檔案的儲存介面。目前實作本機儲存；日後改用 S3 相容服務（如 Cloudflare R2）時，
- * 只需新增另一個實作並在設定中切換，權限檢查仍由 PHP 控制器負責（決議 #24、#25）。
+ * 附件實體檔案的儲存介面：本機（LocalFileStorage）與 Google Drive（GoogleDriveStorage，決議 #33）。
+ *
+ * 不論存在哪裡，檔案都只能經由 PHP 控制器重新做雙重授權後讀出（決議 #25），
+ * 因此介面不提供「取得公開網址」之類的方法。
  */
 interface FileStorage
 {
+    /** 寫入 note_attachments.storage_driver 的代號 */
     public function driver(): string;
 
-    /** 把暫存檔移入儲存空間。$name 只能是 64 位十六進位隨機字串。 */
-    public function put(string $name, string $sourcePath): void;
+    /**
+     * 把暫存檔存入儲存空間。$name 只能是 64 位十六進位隨機字串。
+     *
+     * @return string 之後讀取／刪除用的檔案代號（本機為 $name，Google Drive 為檔案 ID）
+     */
+    public function put(string $name, string $sourcePath): string;
 
-    /** 將檔案內容直接輸出到瀏覽器（不經過記憶體整份讀入）。 */
-    public function stream(string $name): void;
+    /** 取得可讀取的檔案；檔案已不存在時回傳 null。外部儲存會先下載到暫存檔。 */
+    public function open(string $ref): ?StoredFile;
 
-    public function exists(string $name): bool;
-
-    public function delete(string $name): void;
+    public function delete(string $ref): void;
 }

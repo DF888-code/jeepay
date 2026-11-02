@@ -13,6 +13,7 @@ use ProjectHub\Controllers\AdminUserController;
 use ProjectHub\Controllers\AttachmentController;
 use ProjectHub\Controllers\AuthController;
 use ProjectHub\Controllers\AdminLogController;
+use ProjectHub\Controllers\AdminSettingsController;
 use ProjectHub\Controllers\AdminProjectController;
 use ProjectHub\Controllers\ProjectContentController;
 use ProjectHub\Controllers\SearchController;
@@ -22,6 +23,8 @@ use ProjectHub\Controllers\InstallController;
 use ProjectHub\Http\Request;
 use ProjectHub\Http\Response;
 use ProjectHub\Http\Session;
+use ProjectHub\Mail\Mailer;
+use ProjectHub\Settings\SecretSettings;
 use ProjectHub\Settings\Settings;
 use ProjectHub\Support\Config;
 use ProjectHub\Support\Crypto;
@@ -48,6 +51,7 @@ final class App
     public Database $db;
     public Session $session;
     public Settings $settings;
+    public SecretSettings $secrets;
     public View $view;
     public Crypto $crypto;
     public UserRepository $users;
@@ -122,6 +126,17 @@ final class App
             'GET /admin/permissions' => [self::ACCESS_ADMIN, AdminUserController::class, 'permissions'],
             'GET /admin/logs' => [self::ACCESS_ADMIN, AdminLogController::class, 'index'],
             'GET /admin/logs/export' => [self::ACCESS_ADMIN, AdminLogController::class, 'export'],
+            'GET /admin/settings' => [self::ACCESS_ADMIN, AdminSettingsController::class, 'general'],
+            'POST /admin/settings' => [self::ACCESS_ADMIN, AdminSettingsController::class, 'saveGeneral'],
+            'GET /admin/settings/mail' => [self::ACCESS_ADMIN, AdminSettingsController::class, 'mail'],
+            'POST /admin/settings/mail' => [self::ACCESS_ADMIN, AdminSettingsController::class, 'saveMail'],
+            'POST /admin/settings/mail/test' => [self::ACCESS_ADMIN, AdminSettingsController::class, 'testMail'],
+            'GET /admin/settings/storage' => [self::ACCESS_ADMIN, AdminSettingsController::class, 'storage'],
+            'POST /admin/settings/storage' => [self::ACCESS_ADMIN, AdminSettingsController::class, 'saveStorage'],
+            'POST /admin/settings/storage/google' => [self::ACCESS_ADMIN, AdminSettingsController::class, 'saveGoogleClient'],
+            'GET /admin/settings/storage/google/connect' => [self::ACCESS_ADMIN, AdminSettingsController::class, 'connectGoogle'],
+            'GET /admin/settings/storage/google/callback' => [self::ACCESS_ADMIN, AdminSettingsController::class, 'googleCallback'],
+            'POST /admin/settings/storage/google/disconnect' => [self::ACCESS_ADMIN, AdminSettingsController::class, 'disconnectGoogle'],
             'GET /admin/projects' => [self::ACCESS_ADMIN, AdminProjectController::class, 'index'],
             'POST /admin/search-index/rebuild' => [self::ACCESS_ADMIN, AdminProjectController::class, 'rebuildSearchIndex'],
             'POST /admin/projects/{id}/restore' => [self::ACCESS_ADMIN, AdminProjectController::class, 'restore'],
@@ -287,6 +302,7 @@ final class App
         $this->db = new Database((array)$this->config->get('db', []));
         $this->settings = new Settings($this->db);
         $this->crypto = new Crypto($this->config->appKey());
+        $this->secrets = new SecretSettings($this->db, $this->crypto);
         $this->session = new Session();
         $this->users = new UserRepository($this->db);
         $this->throttle = new LoginThrottle($this->db, $this->settings, $this->crypto);
@@ -297,6 +313,23 @@ final class App
             'appVersion' => trim((string)@file_get_contents($this->basePath . '/VERSION')),
             'timezone' => $this->settings->string('system.timezone'),
         ]);
+    }
+
+    /**
+     * 外部服務網址覆寫（config.php 的 service_endpoints）。只供整合測試以假服務取代 Google、Brevo；
+     * 正式環境不設定，一律使用官方網址。
+     *
+     * @return array<string, string>
+     */
+    public function serviceEndpoints(): array
+    {
+        $v = $this->config->get('service_endpoints', []);
+        return is_array($v) ? array_filter($v, 'is_string') : [];
+    }
+
+    public function mailer(): Mailer
+    {
+        return new Mailer($this->settings, $this->secrets, $this->serviceEndpoints());
     }
 
     /** 執行期資料目錄（Session、安裝鎖）。測試時可用 storage_dir 指到獨立目錄。 */

@@ -6,7 +6,10 @@ namespace ProjectHub\Controllers;
 
 use ProjectHub\Activity\ActivityLogger as Log;
 use ProjectHub\Attachment\AttachmentRepository;
-use ProjectHub\Attachment\LocalFileStorage;
+use ProjectHub\Attachment\DriveException;
+use ProjectHub\Attachment\FileStorage;
+use ProjectHub\Attachment\GoogleDriveStorage;
+use ProjectHub\Attachment\StorageManager;
 use ProjectHub\Attachment\UploadInspector;
 use ProjectHub\Authorization\Authorizer;
 use ProjectHub\Http\Request;
@@ -42,9 +45,12 @@ final class AttachmentController extends ProjectBaseController
             return $this->fail('上傳失敗，請重試。');
         }
         $name = self::safeName($file['name']);
-        $usage = $this->attachments()->usage();
-        if ($usage['bytes'] + $file['size'] > $this->app->settings->int('attachments.quota_mb') * 1024 * 1024
-            || $usage['files'] >= $this->app->settings->int('attachments.max_files')) {
+        $storage = $this->manager()->forUploads();
+        if (is_string($storage)) {
+            $this->log('attachment.upload', $projectId, $storage, Log::RESULT_FAILURE);
+            return $this->fail($storage);
+        }
+        if ($this->overQuota($storage->driver(), (int)$file['size'])) {
             $this->log('attachment.upload', $projectId, '總容量或檔案數已達上限', Log::RESULT_FAILURE);
             return $this->fail('附件空間已達系統上限，請聯絡最高權限管理者。');
         }
@@ -55,9 +61,10 @@ final class AttachmentController extends ProjectBaseController
             return $this->fail($check);
         }
 
-        $storage = $this->storage();
         $stored = bin2hex(random_bytes(32));
+        $storedRef = null;
         $previewStored = null;
+        $previewRef = null;
         $previewMime = null;
         $width = null;
         $height = null;
@@ -76,25 +83,33 @@ final class AttachmentController extends ProjectBaseController
                 $previewMime = $img['preview_mime'];
                 $width = $img['width'];
                 $height = $img['height'];
-                $storage->put($previewStored, $img['preview']);
+                $previewRef = $storage->put($previewStored, $img['preview']);
             }
             $sha = hash_file('sha256', $source, true);
             $size = (int)filesize($source);
-            $storage->put($stored, $source);
+            $storedRef = $storage->put($stored, $source);
         } catch (Throwable $e) {
             foreach ($temps as $t) {
                 @unlink($t);
             }
-            if ($previewStored !== null) {
-                $storage->delete($previewStored);
+            if ($previewRef !== null) {
+                $this->safeDelete($storage, $previewRef);
+            }
+            if ($e instanceof DriveException) {
+                // 詳細原因只留給管理者（歷史紀錄），員工看到一般訊息
+                $this->log('attachment.upload', $projectId, 'Google Drive 上傳失敗：' . $e->getMessage() . '（' . $name . '）', Log::RESULT_FAILURE);
+                return $this->fail('檔案儲存空間暫時無法使用，請稍後再試；若持續發生請聯絡最高權限管理者。');
             }
             throw $e;
         }
+        $local = $storage->driver() === 'local';
 
         $id = $this->attachments()->createPending([
             'project_id' => $projectId, 'uploader_id' => $uid, 'original_name' => $name, 'kind' => $check['kind'],
             'mime_type' => $check['mime'], 'size_bytes' => $size, 'sha256' => $sha, 'storage_driver' => $storage->driver(),
-            'stored_name' => $stored, 'preview_stored_name' => $previewStored, 'preview_mime_type' => $previewMime,
+            // 本機檔案的代號就是 stored_name，不重複存
+            'stored_name' => $stored, 'storage_ref' => $local ? null : $storedRef,
+            'preview_stored_name' => $previewStored, 'preview_storage_ref' => $local ? null : $previewRef, 'preview_mime_type' => $previewMime,
             'image_width' => $width, 'image_height' => $height,
         ]);
         $this->log('attachment.upload', $projectId, "附件 #{$id}：{$name}（" . self::humanSize($size) . '）');
@@ -126,7 +141,7 @@ final class AttachmentController extends ProjectBaseController
             return $this->denyAttachment('attachment.preview', $id);
         }
         // 預覽圖數量多，不逐張記錄，避免紀錄爆量（決議見 docs/08 第 7 節）
-        return $this->serve((string)$att['preview_stored_name'], (string)$att['preview_mime_type'], null);
+        return $this->serve($att, true, (string)$att['preview_mime_type'], null);
     }
 
     public function original(Request $request, int $id): Response
@@ -136,7 +151,7 @@ final class AttachmentController extends ProjectBaseController
             return $this->denyAttachment('attachment.view', $id);
         }
         $this->log('attachment.view', (int)$att['project_id'], "附件 #{$id}：{$att['original_name']}");
-        return $this->serve((string)$att['stored_name'], (string)$att['mime_type'], null);
+        return $this->serve($att, false, (string)$att['mime_type'], null);
     }
 
     public function download(Request $request, int $id): Response
@@ -146,7 +161,7 @@ final class AttachmentController extends ProjectBaseController
             return $this->denyAttachment('attachment.download', $id);
         }
         $this->log('attachment.download', (int)$att['project_id'], "附件 #{$id}：{$att['original_name']}");
-        return $this->serve((string)$att['stored_name'], (string)$att['mime_type'], (string)$att['original_name']);
+        return $this->serve($att, false, (string)$att['mime_type'], (string)$att['original_name']);
     }
 
     /** 刪除已綁定的附件：與刪除隨手記相同的規則（作者本人具編輯權限，或具刪除權限）。 */
@@ -207,15 +222,22 @@ final class AttachmentController extends ProjectBaseController
         return $att;
     }
 
-    private function serve(string $stored, string $mime, ?string $downloadName): Response
+    /** @param array<string, mixed> $att */
+    private function serve(array $att, bool $preview, string $mime, ?string $downloadName): Response
     {
-        $storage = $this->storage();
-        if (!$storage->exists($stored)) {
+        $ref = StorageManager::ref($att, $preview);
+        try {
+            $file = $ref === null ? null : $this->manager()->forDriver((string)$att['storage_driver'])->open($ref);
+        } catch (DriveException $e) {
+            error_log('[project-hub] 讀取 Google Drive 附件失敗 #' . $att['id'] . '：' . $e->getMessage());
+            return Response::html($this->app->plainPage('暫時無法讀取檔案', '檔案儲存空間暫時無法連線，請稍後再試；若持續發生請聯絡最高權限管理者。'), 502);
+        }
+        if ($file === null) {
             return Response::html($this->app->plainPage('找不到檔案', '檔案已不存在。'), 404);
         }
         $headers = [
             'Content-Type' => $mime,
-            'Content-Length' => (string)$storage->size($stored),
+            'Content-Length' => (string)$file->size,
             'X-Content-Type-Options' => 'nosniff',
             // 即使檔案內容被瀏覽器誤判為網頁，也不允許執行任何腳本或載入任何資源
             'Content-Security-Policy' => "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; sandbox",
@@ -228,19 +250,47 @@ final class AttachmentController extends ProjectBaseController
         } else {
             $headers['Content-Disposition'] = 'inline';
         }
-        return Response::stream(static function () use ($storage, $stored): void {
-            $storage->stream($stored);
+        return Response::stream(static function () use ($file): void {
+            $file->stream();
         }, $headers);
+    }
+
+    /**
+     * 刪除實體檔案（含預覽圖）。資料庫先標記刪除，外部儲存刪除失敗只記錄伺服器日誌，
+     * 雲端可能留下無法被存取的孤兒檔案，不影響使用者操作。
+     *
+     * @param array<string, mixed> $att
+     */
+    private function removeFiles(array $att): void
+    {
+        try {
+            $storage = $this->manager()->forDriver((string)$att['storage_driver']);
+        } catch (Throwable $e) {
+            error_log('[project-hub] 無法刪除附件檔案 #' . $att['id'] . '：' . $e->getMessage());
+            return;
+        }
+        foreach ([false, true] as $preview) {
+            $ref = StorageManager::ref($att, $preview);
+            if ($ref !== null) {
+                $this->safeDelete($storage, $ref);
+            }
+        }
+    }
+
+    private function safeDelete(FileStorage $storage, string $ref): void
+    {
+        try {
+            $storage->delete($ref);
+        } catch (Throwable $e) {
+            error_log('[project-hub] 刪除附件檔案失敗（' . $storage->driver() . '）：' . $e->getMessage());
+        }
     }
 
     /** @param array<string, mixed> $att */
     private function remove(array $att): void
     {
         $this->attachments()->markDeleted((int)$att['id'], $this->uid());
-        $this->storage()->delete((string)$att['stored_name']);
-        if ($att['preview_stored_name'] !== null) {
-            $this->storage()->delete((string)$att['preview_stored_name']);
-        }
+        $this->removeFiles($att);
     }
 
     /** 無 Cron：上傳時順便清理過期的暫存附件，每次最多 20 個。 */
@@ -248,11 +298,21 @@ final class AttachmentController extends ProjectBaseController
     {
         foreach ($this->attachments()->expiredPending(20) as $att) {
             $this->attachments()->markDeleted((int)$att['id'], $this->uid());
-            $this->storage()->delete((string)$att['stored_name']);
-            if ($att['preview_stored_name'] !== null) {
-                $this->storage()->delete((string)$att['preview_stored_name']);
-            }
+            $this->removeFiles($att);
         }
+    }
+
+    /**
+     * 容量上限依儲存位置分開計算：本機受主機條款限制（決議 #24），Google Drive 受帳號空間限制。
+     */
+    private function overQuota(string $driver, int $incoming): bool
+    {
+        $usage = $this->attachments()->usage($driver);
+        if ($driver === GoogleDriveStorage::DRIVER) {
+            return $usage['bytes'] + $incoming > $this->app->settings->int('attachments.drive_quota_mb') * 1024 * 1024;
+        }
+        return $usage['bytes'] + $incoming > $this->app->settings->int('attachments.quota_mb') * 1024 * 1024
+            || $usage['files'] >= $this->app->settings->int('attachments.max_files');
     }
 
     private function denyAttachment(string $action, int $attachmentId): Response
@@ -313,8 +373,8 @@ final class AttachmentController extends ProjectBaseController
         return new AttachmentRepository($this->app->db);
     }
 
-    private function storage(): LocalFileStorage
+    private function manager(): StorageManager
     {
-        return new LocalFileStorage($this->app->storagePath() . '/uploads');
+        return new StorageManager($this->app);
     }
 }

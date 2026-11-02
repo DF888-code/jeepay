@@ -38,6 +38,21 @@
 2. 產生新的部署包，以 Upload & Unzip 覆蓋；**不會覆蓋** `config/config.php` 與 `storage/` 中的資料（部署包內沒有這些檔案）；
 3. 以最高權限管理者登入並進入「管理後台」：若有待套用的資料庫更新，系統會自動導向「資料庫更新」頁，按「套用資料庫更新」即可（只做新增型變更）。
 
+## 2.1 設定 Google Drive 附件儲存（選用，v0.9.0 起）
+
+1. 到 Google Cloud Console 建立專案，啟用「Google Drive API」；
+2. 「OAuth 同意畫面」選「外部」，加入範圍 `https://www.googleapis.com/auth/drive.file`；完成後按「發布應用程式」（停在「測試中」時授權 7 天就會失效）；
+3. 「憑證 → OAuth 用戶端 ID → 網頁應用程式」，「已授權的重新導向 URI」填入管理後台「系統設定 → 附件儲存位置」頁面顯示的網址（例如 `https://book888.free.je/admin/settings/storage/google/callback`），`config.php` 的 `base_url` 必須正確；
+4. 在「附件儲存位置」頁填入用戶端 ID 與密鑰並儲存，按「連結 Google 帳號」並同意；
+5. 確認顯示「已連結」後，把「新上傳附件的儲存位置」改為 Google Drive；
+6. 驗收：上傳一張圖片與一個 PDF，確認可預覽與下載；到 Google 雲端硬碟確認資料夾「專案管理平台附件（請勿手動修改）」內出現隨機檔名的檔案；用沒有專案權限的帳號開啟附件網址應為「找不到頁面」。
+
+注意：連結的 Google 帳號就是附件的實際存放處，請使用公司可長期保管的帳號，不要使用個人帳號；不要在雲端硬碟手動移動、改名或刪除該資料夾內的檔案。
+
+## 2.2 設定寄信（v0.9.0 起）
+
+「系統設定 → 寄信設定」：以 Brevo 為例，SMTP 主機 `smtp-relay.brevo.com`、連接埠 587、STARTTLS，帳號與密碼為 Brevo 後台「SMTP & API」頁的 SMTP 登入資訊；SMTP 不通時改用「Brevo HTTPS API」並填入 API 金鑰。寄件者 Email 必須是 Brevo 已驗證的寄件地址。儲存後依序按「測試連線」與「寄送測試信」。
+
 ## 3. 緊急情況：最高權限管理者遺失驗證器（Email 救援上線前）
 
 Email 救援功能在階段 10 才完成。在那之前若最高權限管理者遺失手機，可透過**主機控制台的 phpMyAdmin** 重設：

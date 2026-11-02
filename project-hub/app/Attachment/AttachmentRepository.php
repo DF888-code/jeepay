@@ -23,12 +23,12 @@ final class AttachmentRepository
         $this->db->run(
             'INSERT INTO note_attachments
                 (project_id, uploader_id, original_name, original_name_norm, kind, mime_type, size_bytes, sha256, storage_driver,
-                 stored_name, preview_stored_name, preview_mime_type, image_width, image_height, status, created_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, \'pending\', ?)',
+                 stored_name, storage_ref, preview_stored_name, preview_storage_ref, preview_mime_type, image_width, image_height, status, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, \'pending\', ?)',
             [
                 $data['project_id'], $data['uploader_id'], $data['original_name'], TextNormalizer::normalize((string)$data['original_name']),
                 $data['kind'], $data['mime_type'], $data['size_bytes'], $data['sha256'], $data['storage_driver'], $data['stored_name'],
-                $data['preview_stored_name'], $data['preview_mime_type'], $data['image_width'], $data['image_height'], Clock::utc(),
+                $data['storage_ref'], $data['preview_stored_name'], $data['preview_storage_ref'], $data['preview_mime_type'], $data['image_width'], $data['image_height'], Clock::utc(),
             ]
         );
         return (int)$this->db->pdo()->lastInsertId();
@@ -87,10 +87,13 @@ final class AttachmentRepository
         return (int)$this->db->value("SELECT COUNT(*) FROM note_attachments WHERE note_id = ? AND status = 'attached'", [$noteId]);
     }
 
-    /** @return array{bytes:int, files:int} 目前占用（含暫存，不含已刪除） */
-    public function usage(): array
+    /** @return array{bytes:int, files:int} 某個儲存位置目前的占用（含暫存，不含已刪除） */
+    public function usage(string $driver): array
     {
-        $row = (array)$this->db->one("SELECT COALESCE(SUM(size_bytes), 0) AS bytes, COUNT(*) AS files FROM note_attachments WHERE status <> 'deleted'");
+        $row = (array)$this->db->one(
+            "SELECT COALESCE(SUM(size_bytes), 0) AS bytes, COUNT(*) AS files FROM note_attachments WHERE status <> 'deleted' AND storage_driver = ?",
+            [$driver]
+        );
         return ['bytes' => (int)$row['bytes'], 'files' => (int)$row['files']];
     }
 
@@ -106,7 +109,7 @@ final class AttachmentRepository
     public function expiredPending(int $limit): array
     {
         return $this->db->all(
-            "SELECT id, stored_name, preview_stored_name FROM note_attachments WHERE status = 'pending' AND created_at < ? ORDER BY id LIMIT {$limit}",
+            "SELECT id, storage_driver, stored_name, storage_ref, preview_stored_name, preview_storage_ref FROM note_attachments WHERE status = 'pending' AND created_at < ? ORDER BY id LIMIT {$limit}",
             [Clock::utc(Clock::now() - self::PENDING_TTL_SECONDS)]
         );
     }

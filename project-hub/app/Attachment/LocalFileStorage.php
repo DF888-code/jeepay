@@ -43,7 +43,7 @@ HT;
         return 'local';
     }
 
-    public function put(string $name, string $sourcePath): void
+    public function put(string $name, string $sourcePath): string
     {
         $target = $this->path($name);
         $dir = dirname($target);
@@ -57,38 +57,21 @@ HT;
             throw new RuntimeException('無法儲存附件');
         }
         @chmod($target, 0600);
+        return $name;
     }
 
-    public function stream(string $name): void
+    public function open(string $ref): ?StoredFile
     {
-        $path = $this->path($name);
-        $fp = @fopen($path, 'rb');
-        if ($fp === false) {
-            throw new RuntimeException('附件檔案不存在');
-        }
-        while (!feof($fp)) {
-            echo fread($fp, 65536);
-            flush();
-        }
-        fclose($fp);
+        $path = $this->path($ref);
+        return is_file($path) ? new StoredFile($path, (int)filesize($path), false) : null;
     }
 
-    public function exists(string $name): bool
+    public function delete(string $ref): void
     {
-        return is_file($this->path($name));
-    }
-
-    public function delete(string $name): void
-    {
-        $path = $this->path($name);
+        $path = $this->path($ref);
         if (is_file($path)) {
             @unlink($path);
         }
-    }
-
-    public function size(string $name): int
-    {
-        return (int)@filesize($this->path($name));
     }
 
     private function path(string $name): string

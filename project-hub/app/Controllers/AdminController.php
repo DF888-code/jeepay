@@ -23,7 +23,7 @@ abstract class AdminController extends Controller
     /** 再驗證後可返回的頁面（白名單，避免開放式轉址） */
     protected static function safeReturn(string $path): string
     {
-        return preg_match('#^/admin/(users|permissions|projects(/[1-9][0-9]{0,8}/permissions)?)$#', $path) ? $path : '/admin/users';
+        return preg_match('#^/admin/(users|permissions|projects(/[1-9][0-9]{0,8}/permissions)?|settings(/mail|/storage)?)$#', $path) ? $path : '/admin/users';
     }
 
     protected function elevated(): bool

@@ -49,6 +49,10 @@ final class ActivityLabels
         'search.reindex' => '重建搜尋索引',
         'logs.export' => '匯出歷史紀錄',
         'logs.purge' => '清理過期紀錄',
+        'settings.update' => '修改系統設定',
+        'mail.test' => '測試寄信',
+        'storage.google.connect' => '連結 Google Drive',
+        'storage.google.disconnect' => '中斷連結 Google Drive',
     ];
 
     private const RESULTS = ['success' => '成功', 'failure' => '失敗', 'denied' => '拒絕'];
