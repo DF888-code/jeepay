@@ -84,7 +84,9 @@ final class AuthState
     /** 密碼驗證成功後進入「待 2FA」或「強制綁定」狀態。 */
     public function beginSecondFactor(array $user): string
     {
-        $this->session->regenerate(); // 防止 Session 固定攻擊
+        // 新的登入一律從乾淨的 Session 開始（同時更換 Session ID，防止 Session 固定攻擊），
+        // 不沿用前一次登入留下的任何狀態，例如管理者再驗證標記
+        $this->session->clearAuth();
         $stage = ((int)$user['must_enroll_2fa'] === 1 || (int)$user['totp_enabled'] !== 1) ? self::ENROLL : self::TOTP;
         $this->session->set('uid', (int)$user['id']);
         $this->session->set('auth_version', (int)$user['auth_version']);

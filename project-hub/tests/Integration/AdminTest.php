@@ -133,6 +133,28 @@ test('新員工首次登入：綁定 2FA 後必須先變更臨時密碼，期間
     assert_same(0, (int)userRow('alice')['must_change_password']);
 });
 
+test('登出後再登入：管理者再驗證狀態不會保留，必須重新驗證', function (): void {
+    $b = adminLogin();
+    elevate($b);
+    assert_contains('已完成身分驗證', $b->get('/admin/users')->body);
+    $b->post('/logout', []);
+    loginFull($b, ADMIN_USER, ADMIN_PASS_NEW);
+    $page = $b->get('/admin/users')->body;
+    assert_contains('需要身分驗證', $page, '同一個瀏覽器重新登入後必須重新驗證');
+    assert_not_contains('已完成身分驗證', $page);
+    $b->post('/admin/users', ['username' => 'after_logout', 'display_name' => 'x']);
+    assert_same([], ctx()['pdo']->query("SELECT id FROM users WHERE username = 'after_logout'")->fetchAll(), '未重新驗證不可執行管理操作');
+});
+
+test('登出後，登出前取得的表單（舊 CSRF Token）不能再送出', function (): void {
+    $b = adminLogin();
+    $b->get('/account');
+    $oldToken = $b->csrf();
+    $b->post('/logout', []);
+    loginFull($b, ADMIN_USER, ADMIN_PASS_NEW);
+    assert_same(400, $b->post('/account/sessions/revoke-others', ['_csrf' => $oldToken])->status);
+});
+
 test('全域權限：每一列只更新該員工，不影響其他員工', function () use (&$admin): void {
     elevate($admin, '/admin/permissions');
     $admin->get('/admin/users');

@@ -56,11 +56,19 @@ final class Session
         session_regenerate_id(true);
     }
 
-    /** 清除登入相關狀態但保留 Session（以便顯示提示訊息與 CSRF Token）。 */
+    /**
+     * 登出或登入狀態失效時，清除 Session 中「所有」與使用者相關的資料，只保留提示訊息。
+     *
+     * 為什麼用白名單保留而不是逐項刪除：逐項刪除容易漏掉日後新增的狀態
+     * （例如管理者再驗證標記曾因此在登出後殘留），保留清單則只有明確安全的項目。
+     * CSRF Token 也一併更換，避免登出前取得的表單在新的登入狀態下仍可送出。
+     */
     public function clearAuth(): void
     {
-        foreach (['uid', 'auth_version', 'stage', 'stage_at', 'login_at', 'last_seen', 'totp_change_until'] as $k) {
-            unset($_SESSION[$k]);
+        $flash = $_SESSION['flash'] ?? null;
+        $_SESSION = [];
+        if ($flash !== null) {
+            $_SESSION['flash'] = $flash;
         }
         $this->regenerate();
     }
