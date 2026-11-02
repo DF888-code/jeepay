@@ -32,6 +32,10 @@ $alertClass = ['success' => 'success', 'warning' => 'warning', 'error' => 'dange
             <li class="nav-item"><a class="nav-link" href="/admin">管理後台</a></li>
           <?php endif; ?>
         </ul>
+        <form method="get" action="/search" class="d-flex my-2 my-md-0 me-md-3" role="search">
+          <label for="nav-search" class="visually-hidden">全站搜尋</label>
+          <input id="nav-search" type="search" name="q" class="form-control form-control-sm" placeholder="搜尋（繁簡皆可）" maxlength="100">
+        </form>
         <div class="d-flex align-items-center gap-3">
           <span class="navbar-text small"><?= e($currentUser['display_name']) ?></span>
           <form method="post" action="/logout" class="m-0">

@@ -11,7 +11,7 @@ use ProjectHub\Support\Database;
 
 /**
  * 專案關鍵字：保留使用者輸入的原文，以標準化後的 keyword_norm 判斷是否重複。
- * 「資料庫」與「数据库」視為同一個關鍵字，需等階段 7 加入 OpenCC 後生效；目前已能辨識全形／半形與大小寫。
+ * 全形／半形、大小寫、繁簡字形、兩岸用語（例如「資料庫」與「数据库」）都視為同一個關鍵字。
  */
 final class KeywordRepository
 {
@@ -39,6 +39,12 @@ final class KeywordRepository
     public function add(int $projectId, string $keyword, int $userId): ?string
     {
         $norm = TextNormalizer::normalize($keyword);
+        // 用語不同但意思相同（例如「資料庫」與「数据库」）也視為重複
+        foreach ($this->db->all('SELECT keyword, keyword_norm FROM project_keywords WHERE project_id = ?', [$projectId]) as $existing) {
+            if (TextNormalizer::sameConcept($norm, (string)$existing['keyword_norm'])) {
+                return (string)$existing['keyword'];
+            }
+        }
         try {
             $this->db->run(
                 'INSERT INTO project_keywords (project_id, keyword, keyword_norm, created_by, created_at) VALUES (?, ?, ?, ?, ?)',

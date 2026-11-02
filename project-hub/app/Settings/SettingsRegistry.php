@@ -71,6 +71,10 @@ final class SettingsRegistry
                 'category' => 'attachments', 'label' => '附件檔案數上限', 'type' => 'int', 'default' => 5000, 'min' => 100, 'max' => 20000,
                 'help' => '每張圖片會另存一個預覽檔；主機總檔案數上限約 30,000。',
             ],
+            'search.log_keywords' => [
+                'category' => 'search', 'label' => '歷史紀錄保存搜尋原文', 'type' => 'bool', 'default' => false,
+                'help' => '決議 #5：預設只記錄搜尋字數與結果數量；搜尋文字可能包含密碼或個資。',
+            ],
             'security.password_min_length' => [
                 'category' => 'security', 'label' => '密碼最短長度', 'type' => 'int', 'default' => 10,
                 'min' => 8, 'max' => 64,

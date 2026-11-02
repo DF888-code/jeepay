@@ -18,6 +18,7 @@ date_default_timezone_set('UTC');
 $failures = 0;
 
 require __DIR__ . '/Unit/AuthPrimitivesTest.php';
+require __DIR__ . '/Unit/SearchNormalizerTest.php';
 $failures += run_registered_tests('單元測試');
 
 $dbName = (string)getenv('PH_TEST_DB_NAME');
@@ -100,6 +101,8 @@ try {
     $failures += run_registered_tests('整合測試：專案說明、關鍵字、隨手記（階段 6a）');
     require __DIR__ . '/Integration/AttachmentTest.php';
     $failures += run_registered_tests('整合測試：隨手記附件（階段 6b）');
+    require __DIR__ . '/Integration/SearchTest.php';
+    $failures += run_registered_tests('整合測試：全站搜尋與簡繁轉換（階段 7）');
 } finally {
     proc_terminate($server);
     @unlink($tmp . '/config.php');

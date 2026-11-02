@@ -14,6 +14,7 @@ use ProjectHub\Controllers\AttachmentController;
 use ProjectHub\Controllers\AuthController;
 use ProjectHub\Controllers\AdminProjectController;
 use ProjectHub\Controllers\ProjectContentController;
+use ProjectHub\Controllers\SearchController;
 use ProjectHub\Controllers\ProjectController;
 use ProjectHub\Database\Migrator;
 use ProjectHub\Controllers\InstallController;
@@ -87,6 +88,8 @@ final class App
             'GET /attachments/{id}/original' => [self::ACCESS_AUTH, AttachmentController::class, 'original'],
             'GET /attachments/{id}/download' => [self::ACCESS_AUTH, AttachmentController::class, 'download'],
             'POST /projects/{id}/attachments/{id}/delete' => [self::ACCESS_AUTH, AttachmentController::class, 'delete'],
+            'GET /search' => [self::ACCESS_AUTH, SearchController::class, 'index'],
+            'GET /api/search' => [self::ACCESS_AUTH, SearchController::class, 'api'],
             'GET /api/projects' => [self::ACCESS_AUTH, ProjectController::class, 'apiList'],
             'GET /api/projects/{id}' => [self::ACCESS_AUTH, ProjectController::class, 'apiShow'],
             'GET /login' => [self::ACCESS_GUEST, AuthController::class, 'showLogin'],
@@ -117,6 +120,7 @@ final class App
             'POST /admin/migrate' => [self::ACCESS_ADMIN, AdminUserController::class, 'migrate'],
             'GET /admin/permissions' => [self::ACCESS_ADMIN, AdminUserController::class, 'permissions'],
             'GET /admin/projects' => [self::ACCESS_ADMIN, AdminProjectController::class, 'index'],
+            'POST /admin/search-index/rebuild' => [self::ACCESS_ADMIN, AdminProjectController::class, 'rebuildSearchIndex'],
             'POST /admin/projects/{id}/restore' => [self::ACCESS_ADMIN, AdminProjectController::class, 'restore'],
             'GET /admin/projects/{id}/permissions' => [self::ACCESS_ADMIN, AdminProjectController::class, 'permissions'],
             'POST /admin/projects/{id}/permissions/{id}' => [self::ACCESS_ADMIN, AdminProjectController::class, 'savePermission'],

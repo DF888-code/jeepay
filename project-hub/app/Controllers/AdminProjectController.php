@@ -8,6 +8,7 @@ use ProjectHub\Authorization\Authorizer;
 use ProjectHub\Http\Request;
 use ProjectHub\Http\Response;
 use ProjectHub\Project\ProjectRepository;
+use ProjectHub\Search\SearchIndexer;
 
 /**
  * 管理後台：專案管理（含回收區）與個別專案權限（第二層授權）。
@@ -21,7 +22,26 @@ final class AdminProjectController extends AdminController
             'projects' => $this->projects()->listAllForAdmin(),
             'elevated' => $this->elevated(),
             'returnTo' => '/admin/projects',
+            'searchIndex' => (new SearchIndexer($this->app->db))->state() + ['current' => (new SearchIndexer($this->app->db))->isCurrent()],
+            'scripts' => ['/assets/search-rebuild.js'],
         ]);
+    }
+
+    /**
+     * 重建搜尋索引（分批）：每次請求最多處理 20 秒，避開主機 60 秒限制。
+     * 只重新計算 *_norm 欄位，不改動使用者輸入的原文，因此不需要再驗證。
+     */
+    public function rebuildSearchIndex(Request $request): Response
+    {
+        $result = (new SearchIndexer($this->app->db))->run(20.0);
+        if ($result['done']) {
+            $this->log('search.reindex', '搜尋索引重建完成' . ($result['conflicts'] === [] ? '' : '（' . count($result['conflicts']) . ' 個關鍵字需手動處理）'));
+        }
+        if ($request->wantsJson() || $request->header('Accept') === 'application/json') {
+            return Response::json($result);
+        }
+        return $this->back('/admin/projects', $result['done'] ? 'success' : 'warning',
+            $result['done'] ? '搜尋索引已重建完成。' : '已處理一部分，請再按一次「繼續重建」。');
     }
 
     public function restore(Request $request, int $id): Response

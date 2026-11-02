@@ -5,7 +5,14 @@
     <a href="/projects/new" class="btn btn-primary">建立專案</a>
   <?php endif; ?>
 </div>
-<p class="small text-body-secondary">只會列出您有權查看的專案。全站搜尋（含簡繁互搜）將於後續版本加入。</p>
+<form method="get" action="/search" class="row g-2 mb-2" role="search">
+  <div class="col-12 col-md-8 col-lg-6">
+    <label for="home-search" class="visually-hidden">搜尋專案</label>
+    <input id="home-search" type="search" name="q" class="form-control" maxlength="100" placeholder="搜尋專案名稱、說明、關鍵字、隨手記（繁簡皆可）">
+  </div>
+  <div class="col-12 col-md-auto"><button type="submit" class="btn btn-outline-primary w-100">搜尋</button></div>
+</form>
+<p class="small text-body-secondary">只會列出您有權查看的專案。</p>
 
 <?php if ($projects === []): ?>
   <div class="card shadow-sm">

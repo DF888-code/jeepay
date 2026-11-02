@@ -83,6 +83,8 @@ final class InstallController extends Controller
 
         try {
             (new Migrator($this->app->db, $this->app->basePath . '/database/migrations'))->migrate();
+            // 新安裝的資料一開始就以最新的搜尋標準化規則寫入，不需要重建
+            (new \ProjectHub\Search\SearchIndexer($this->app->db))->markCurrent();
         } catch (Throwable $e) {
             error_log('[project-hub] 安裝時資料表建立失敗：' . get_class($e) . ' ' . $e->getMessage());
             return $fail('資料表建立失敗，請檢查資料庫權限。', 500);
