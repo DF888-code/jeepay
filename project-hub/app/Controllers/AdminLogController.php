@@ -134,6 +134,19 @@ final class AdminLogController extends AdminController
         return [['from' => $from, 'to' => $to, 'user' => $user, 'category' => $category], $error];
     }
 
+    /** 系統錯誤紀錄：依錯誤頁上的追蹤代碼查詢錯誤原因（InfinityFree 不提供 PHP 錯誤日誌） */
+    public function errors(Request $request): Response
+    {
+        $id = strtolower(trim($request->query('id')));
+        $id = preg_match('/^[a-f0-9]{12}$/', $id) ? $id : '';
+        return $this->render('admin/errors', [
+            'title' => '系統錯誤紀錄',
+            'traceId' => $id,
+            'invalidId' => $id === '' && $request->query('id') !== '',
+            'errors' => $this->app->errorLog()->recent(100, $id),
+        ]);
+    }
+
     private static function validDate(string $value): bool
     {
         if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {

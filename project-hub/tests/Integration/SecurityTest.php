@@ -234,3 +234,32 @@ test('錯誤訊息不外洩：不存在的頁面與錯誤頁不含路徑、SQL �
         }
     }
 });
+
+test('系統錯誤紀錄：錯誤頁的追蹤代碼可在管理後台查到原因；不記錄網址參數；只有管理者能看', function (): void {
+    $pdo = ctx()['pdo'];
+    $admin = adminLogin();
+    $pid = projectId('附件測試');
+    // 暫時讓資料表消失，製造一個真實的伺服器錯誤
+    $pdo->exec('RENAME TABLE project_keywords TO project_keywords_tmp');
+    try {
+        $admin->get("/projects/{$pid}?token=secret-in-query");
+    } finally {
+        $pdo->exec('RENAME TABLE project_keywords_tmp TO project_keywords');
+    }
+    assert_same(500, $admin->status);
+    assert_true((bool)preg_match('/追蹤代碼提供給管理者：([a-f0-9]{12})/u', $admin->body, $m), '錯誤頁顯示追蹤代碼');
+    assert_not_contains('project_keywords', $admin->body, '錯誤頁不透露細節');
+    $id = $m[1];
+
+    $page = $admin->get('/admin/errors?id=' . $id)->body;
+    assert_contains('data-error-count="1"', $page);
+    assert_contains('PDOException', $page);
+    assert_contains("/projects/{$pid}", $page);
+    assert_not_contains('secret-in-query', $page, '不記錄查詢字串');
+    assert_not_contains('/home/', $page, '只顯示專案內的相對路徑');
+    assert_contains('data-error-count="0"', $admin->get('/admin/errors?id=000000000000')->body);
+    assert_same(200, $admin->get('/admin/errors?id=<script>')->status);
+    assert_same(404, signedIn('g1p1')->get('/admin/errors')->status);
+    $files = glob(ctx()['storage'] . '/logs/errors-*.log') ?: [];
+    assert_same(1, count($files), '寫在 storage/logs');
+});

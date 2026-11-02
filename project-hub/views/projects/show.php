@@ -52,28 +52,25 @@
   </div>
 </section>
 
-<section class="card shadow-sm mb-4" id="keywords">
+<section class="card shadow-sm mb-4" id="keywords"<?php if ($can['edit']): ?> data-keywords data-api="/api/projects/<?= (int)$project['id'] ?>/keywords" data-form-base="/projects/<?= (int)$project['id'] ?>/keywords"<?php endif; ?>>
   <div class="card-header fw-semibold">專案關鍵字</div>
   <div class="card-body">
-    <?php if ($keywords === []): ?>
-      <p class="small text-body-secondary mb-2">尚未設定關鍵字。</p>
-    <?php else: ?>
-      <div class="d-flex flex-wrap gap-2 mb-3">
-        <?php foreach ($keywords as $k): ?>
-          <span class="badge rounded-pill text-bg-light border d-inline-flex align-items-center gap-1 fs-6 fw-normal keyword-badge">
-            <?= e($k['keyword']) ?>
-            <?php if ($can['edit']): ?>
-              <form method="post" action="/projects/<?= (int)$project['id'] ?>/keywords/<?= (int)$k['id'] ?>/delete" class="d-inline m-0">
-                <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
-                <button type="submit" class="btn-close btn-close-sm keyword-remove" aria-label="移除關鍵字 <?= e($k['keyword']) ?>"></button>
-              </form>
-            <?php endif; ?>
-          </span>
-        <?php endforeach; ?>
-      </div>
-    <?php endif; ?>
+    <p class="small text-body-secondary mb-2<?= $keywords === [] ? '' : ' d-none' ?>" data-keyword-empty>尚未設定關鍵字。</p>
+    <div class="d-flex flex-wrap gap-2 mb-3<?= $keywords === [] ? ' d-none' : '' ?>" data-keyword-list>
+      <?php foreach ($keywords as $k): ?>
+        <span class="badge rounded-pill text-bg-light border d-inline-flex align-items-center gap-1 fs-6 fw-normal keyword-badge">
+          <?= e($k['keyword']) ?>
+          <?php if ($can['edit']): ?>
+            <form method="post" action="/projects/<?= (int)$project['id'] ?>/keywords/<?= (int)$k['id'] ?>/delete" class="d-inline m-0" data-keyword-remove="<?= (int)$k['id'] ?>">
+              <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+              <button type="submit" class="btn-close btn-close-sm keyword-remove" aria-label="移除關鍵字 <?= e($k['keyword']) ?>"></button>
+            </form>
+          <?php endif; ?>
+        </span>
+      <?php endforeach; ?>
+    </div>
     <?php if ($can['edit']): ?>
-      <form method="post" action="/projects/<?= (int)$project['id'] ?>/keywords" class="row g-2">
+      <form method="post" action="/projects/<?= (int)$project['id'] ?>/keywords" class="row g-2" data-keyword-add>
         <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
         <div class="col-8 col-md-4">
           <label for="new-keyword" class="visually-hidden">新增關鍵字</label>
@@ -81,6 +78,7 @@
         </div>
         <div class="col-4 col-md-2"><button type="submit" class="btn btn-sm btn-outline-primary w-100">新增</button></div>
       </form>
+      <div class="small mt-2" data-keyword-status role="status" aria-live="polite"></div>
     <?php endif; ?>
   </div>
 </section>

@@ -30,6 +30,7 @@ use ProjectHub\Settings\Settings;
 use ProjectHub\Support\Config;
 use ProjectHub\Support\Crypto;
 use ProjectHub\Support\Database;
+use ProjectHub\Support\ErrorLog;
 use ProjectHub\Support\View;
 use Throwable;
 
@@ -85,6 +86,8 @@ final class App
             'GET /projects/{id}/history' => [self::ACCESS_AUTH, ProjectContentController::class, 'history'],
             'POST /projects/{id}/keywords' => [self::ACCESS_AUTH, ProjectContentController::class, 'addKeyword'],
             'POST /projects/{id}/keywords/{id}/delete' => [self::ACCESS_AUTH, ProjectContentController::class, 'deleteKeyword'],
+            'POST /api/projects/{id}/keywords' => [self::ACCESS_AUTH, ProjectContentController::class, 'apiAddKeyword'],
+            'POST /api/projects/{id}/keywords/{id}/delete' => [self::ACCESS_AUTH, ProjectContentController::class, 'apiDeleteKeyword'],
             'POST /projects/{id}/notes' => [self::ACCESS_AUTH, ProjectContentController::class, 'createNote'],
             'POST /projects/{id}/notes/{id}/update' => [self::ACCESS_AUTH, ProjectContentController::class, 'updateNote'],
             'POST /projects/{id}/notes/{id}/delete' => [self::ACCESS_AUTH, ProjectContentController::class, 'deleteNote'],
@@ -134,6 +137,7 @@ final class App
             'GET /admin/permissions' => [self::ACCESS_ADMIN, AdminUserController::class, 'permissions'],
             'GET /admin/logs' => [self::ACCESS_ADMIN, AdminLogController::class, 'index'],
             'GET /admin/logs/export' => [self::ACCESS_ADMIN, AdminLogController::class, 'export'],
+            'GET /admin/errors' => [self::ACCESS_ADMIN, AdminLogController::class, 'errors'],
             'GET /admin/settings' => [self::ACCESS_ADMIN, AdminSettingsController::class, 'general'],
             'POST /admin/settings' => [self::ACCESS_ADMIN, AdminSettingsController::class, 'saveGeneral'],
             'GET /admin/settings/mail' => [self::ACCESS_ADMIN, AdminSettingsController::class, 'mail'],
@@ -160,11 +164,13 @@ final class App
     {
         $this->request = $request;
         $requestId = bin2hex(random_bytes(6));
+        $this->watchFatal($requestId, $request);
         try {
             $response = $this->dispatch($request);
         } catch (Throwable $e) {
             // 詳細錯誤只寫入伺服器日誌，畫面只顯示追蹤代碼，避免洩漏路徑、SQL 或設定
             error_log(sprintf('[project-hub] #%s %s: %s @ %s:%d', $requestId, get_class($e), $e->getMessage(), $e->getFile(), $e->getLine()));
+            $this->errorLog()->record($requestId, $e, $request->method, $request->path);
             $response = $request->wantsJson()
                 ? Response::json(['error' => '系統發生錯誤', 'trace_id' => $requestId], 500)
                 : Response::html($this->plainPage('系統發生錯誤', '請稍後再試。若持續發生，請將追蹤代碼提供給管理者：' . $requestId), 500);
@@ -339,6 +345,33 @@ final class App
     public function mailer(): Mailer
     {
         return new Mailer($this->settings, $this->secrets, $this->serviceEndpoints());
+    }
+
+    /** 系統錯誤紀錄（管理後台「系統錯誤」依追蹤代碼查詢） */
+    public function errorLog(): ErrorLog
+    {
+        $storage = isset($this->config) ? $this->storagePath() : $this->basePath . '/storage';
+        return new ErrorLog($storage . '/logs');
+    }
+
+    /**
+     * 記憶體不足、執行逾時等致命錯誤無法以 try/catch 捕捉：在請求結束時檢查並記錄，
+     * 盡量顯示含追蹤代碼的錯誤頁，而不是一片空白。
+     */
+    private function watchFatal(string $requestId, Request $request): void
+    {
+        register_shutdown_function(function () use ($requestId, $request): void {
+            $error = error_get_last();
+            if ($error === null || !in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR], true)) {
+                return;
+            }
+            $this->errorLog()->recordFatal($requestId, $error, $request->method, $request->path);
+            if (!headers_sent()) {
+                http_response_code(500);
+                header('Content-Type: text/html; charset=utf-8');
+                echo $this->plainPage('系統發生錯誤', '請稍後再試。若持續發生，請將追蹤代碼提供給管理者：' . $requestId);
+            }
+        });
     }
 
     /** 執行期資料目錄（Session、安裝鎖）。測試時可用 storage_dir 指到獨立目錄。 */

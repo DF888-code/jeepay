@@ -98,6 +98,42 @@ test('關鍵字：只能查看的人不能新增或刪除；不能用其他專�
     assert_same(0, (int)ctx()['pdo']->query("SELECT COUNT(*) FROM project_keywords WHERE id = {$kid}")->fetchColumn());
 });
 
+test('關鍵字局部更新 API：回傳最新清單；重複提醒、輸入錯誤、無權限、跨專案與舊頁面相同', function () use (&$cp): void {
+    $e = signedIn('editor2');
+    $e->get("/projects/{$cp}");
+    assert_contains('data-keyword-add', $e->body);
+    assert_contains('/assets/project-keywords.js', $e->body);
+    $e->post("/api/projects/{$cp}/keywords", ['keyword' => '局部<更新>']);
+    assert_same(200, $e->status);
+    $json = json_decode($e->body, true);
+    assert_same('success', $json['type']);
+    assert_true(in_array('局部<更新>', array_column($json['keywords'], 'keyword'), true), '回傳最新清單（原文保留）');
+    assert_not_contains('<更新>', $e->body, 'JSON 中的 < > 已跳脫');
+    $kid = (int)ctx()['pdo']->query("SELECT id FROM project_keywords WHERE project_id = {$cp} AND keyword = '局部<更新>'")->fetchColumn();
+
+    $e->get("/projects/{$cp}");
+    $dup = json_decode($e->post("/api/projects/{$cp}/keywords", ['keyword' => '局部<更新>'])->body, true);
+    assert_same('warning', $dup['type']);
+    $e->get("/projects/{$cp}");
+    assert_same(422, $e->post("/api/projects/{$cp}/keywords", ['keyword' => '   '])->status);
+
+    $v = signedIn('viewer');
+    $v->get("/projects/{$cp}");
+    assert_not_contains('data-keyword-add', $v->body, '只能查看的人沒有新增表單');
+    assert_same(404, $v->post("/api/projects/{$cp}/keywords", ['keyword' => '偷加'])->status);
+    $v->get("/projects/{$cp}");
+    assert_same(404, $v->post("/api/projects/{$cp}/keywords/{$kid}/delete", [])->status);
+    $e->get("/projects/{$cp}");
+    assert_same(404, $e->post('/api/projects/' . projectId('公司規章') . "/keywords/{$kid}/delete", [])->status, '關鍵字不屬於該專案');
+    assert_same(400, $e->post("/api/projects/{$cp}/keywords/{$kid}/delete", [], false)->status, '缺少 CSRF Token');
+
+    $e->get("/projects/{$cp}");
+    $del = json_decode($e->post("/api/projects/{$cp}/keywords/{$kid}/delete", [])->body, true);
+    assert_same('success', $del['type']);
+    assert_true(!in_array($kid, array_column($del['keywords'], 'id'), true));
+    assert_true((int)ctx()['pdo']->query("SELECT COUNT(*) FROM activity_logs WHERE action = 'keyword.delete' AND detail LIKE '%局部<更新>%'")->fetchColumn() === 1, '與表單相同會寫入紀錄');
+});
+
 test('隨手記：作者一律取自登入帳號，表單中偽造的作者欄位被忽略；內容會跳脫 HTML', function () use (&$cp): void {
     $e = signedIn('editor2');
     $e->get("/projects/{$cp}");

@@ -54,6 +54,11 @@
 | 3 | 回應標頭 `X-Powered-By` 透露 PHP 版本 | 低：資訊洩漏 | 送出回應前移除 |
 | 4 | JSON API 原樣回傳 `<script>` 等字元 | 低：已有 `application/json` 與 `nosniff`，不會被執行 | JSON 輸出把 `< > & ' "` 轉為 `<` 等（縱深防禦） |
 
+## 4.1 上線後追加（v1.0.1）
+
+- 系統錯誤紀錄：錯誤細節寫入 `storage/logs/`（Apache 實測 `/storage/` 一律 403），只記錄方法、路徑（不含查詢字串）、例外類型與訊息、專案內相對路徑的堆疊；只有最高權限管理者可在後台查詢，一般員工 404。訊息可能含資料庫錯誤描述，因此不對其他人開放；
+- 關鍵字局部更新 API（`/api/projects/{id}/keywords`）：權限、CSRF、紀錄與原表單相同，已自動納入全站路由安全掃描；關鍵字以 textContent 寫入畫面，不使用 innerHTML。
+
 ## 5. 已知限制與殘餘風險
 
 - **免費主機**：InfinityFree 無 SLA、無備份保證，條款禁止當作檔案儲存（附件建議改存 Google Drive，決議 #24、#33）；請定期以 phpMyAdmin 匯出資料庫備份；

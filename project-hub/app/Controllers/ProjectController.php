@@ -109,7 +109,7 @@ final class ProjectController extends ProjectBaseController
             'attachments' => $attachments,
             'acceptTypes' => UploadInspector::acceptAttribute(),
             'maxFileMb' => $this->app->settings->int('attachments.max_file_mb'),
-            'scripts' => $can['edit'] ? ['/assets/note-attachments.js', '/assets/image-viewer.js'] : ['/assets/image-viewer.js'],
+            'scripts' => $can['edit'] ? ['/assets/note-attachments.js', '/assets/image-viewer.js', '/assets/project-keywords.js'] : ['/assets/image-viewer.js'],
         ]);
     }
 

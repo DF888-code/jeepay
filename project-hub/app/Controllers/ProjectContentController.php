@@ -93,25 +93,55 @@ final class ProjectContentController extends ProjectBaseController
 
     public function addKeyword(Request $request, int $id): Response
     {
+        $result = $this->doAddKeyword($request, $id);
+        return $result instanceof Response ? $result : $this->back("/projects/{$id}#keywords", $result[0], $result[1]);
+    }
+
+    public function deleteKeyword(Request $request, int $id, int $keywordId): Response
+    {
+        $result = $this->doDeleteKeyword($id, $keywordId);
+        return $result instanceof Response ? $result : $this->back("/projects/{$id}#keywords", $result[0], $result[1]);
+    }
+
+    /**
+     * 局部更新用的 API（專案頁的關鍵字區塊以 fetch 呼叫，不重新載入整頁）。
+     * 權限、驗證、紀錄與一般表單完全相同，只是回應改為 JSON，並附上最新的關鍵字清單供畫面重繪。
+     */
+    public function apiAddKeyword(Request $request, int $id): Response
+    {
+        $result = $this->doAddKeyword($request, $id);
+        return $result instanceof Response ? $result : $this->keywordJson($id, $result);
+    }
+
+    public function apiDeleteKeyword(Request $request, int $id, int $keywordId): Response
+    {
+        $result = $this->doDeleteKeyword($id, $keywordId);
+        return $result instanceof Response ? $result : $this->keywordJson($id, $result);
+    }
+
+    /** @return Response|array{0:string,1:string} 拒絕時回傳 Response；否則回傳 [提示類型, 訊息] */
+    private function doAddKeyword(Request $request, int $id): Response|array
+    {
         if (!$this->authorizer()->can($this->uid(), Authorizer::EDIT, $id)) {
             return $this->deny('keyword.add', $id);
         }
         $keyword = trim(TextNormalizer::clean($request->input('keyword')));
         if ($keyword === '' || str_contains($keyword, "\n")) {
-            return $this->back("/projects/{$id}#keywords", 'error', '請輸入關鍵字。');
+            return ['error', '請輸入關鍵字。'];
         }
         if (mb_strlen($keyword) > KeywordRepository::MAX_LENGTH) {
-            return $this->back("/projects/{$id}#keywords", 'error', '關鍵字不可超過 ' . KeywordRepository::MAX_LENGTH . ' 字。');
+            return ['error', '關鍵字不可超過 ' . KeywordRepository::MAX_LENGTH . ' 字。'];
         }
         $existing = $this->keywords()->add($id, $keyword, $this->uid());
         if ($existing !== null) {
-            return $this->back("/projects/{$id}#keywords", 'warning', "已有相同的關鍵字「{$existing}」，未重複新增。");
+            return ['warning', "已有相同的關鍵字「{$existing}」，未重複新增。"];
         }
         $this->app->logger->log('data', 'keyword.add', Log::RESULT_SUCCESS, $this->uid(), $this->app->auth->label(), '關鍵字：' . $keyword, $id, $this->projectName($id));
-        return $this->back("/projects/{$id}#keywords", 'success', "已新增關鍵字「{$keyword}」。");
+        return ['success', "已新增關鍵字「{$keyword}」。"];
     }
 
-    public function deleteKeyword(Request $request, int $id, int $keywordId): Response
+    /** @return Response|array{0:string,1:string} */
+    private function doDeleteKeyword(int $id, int $keywordId): Response|array
     {
         if (!$this->authorizer()->can($this->uid(), Authorizer::EDIT, $id)) {
             return $this->deny('keyword.delete', $id);
@@ -122,7 +152,15 @@ final class ProjectContentController extends ProjectBaseController
         }
         $this->keywords()->delete($id, $keywordId);
         $this->app->logger->log('data', 'keyword.delete', Log::RESULT_SUCCESS, $this->uid(), $this->app->auth->label(), '關鍵字：' . $keyword['keyword'], $id, $this->projectName($id));
-        return $this->back("/projects/{$id}#keywords", 'success', "已移除關鍵字「{$keyword['keyword']}」。");
+        return ['success', "已移除關鍵字「{$keyword['keyword']}」。"];
+    }
+
+    /** @param array{0:string,1:string} $result */
+    private function keywordJson(int $id, array $result): Response
+    {
+        $list = array_map(static fn(array $k): array => ['id' => (int)$k['id'], 'keyword' => (string)$k['keyword']], $this->keywords()->list($id));
+        // 輸入錯誤回 422，其餘（含「已存在」提醒）回 200
+        return Response::json(['type' => $result[0], 'message' => $result[1], 'keywords' => $list], $result[0] === 'error' ? 422 : 200);
     }
 
     public function createNote(Request $request, int $id): Response
