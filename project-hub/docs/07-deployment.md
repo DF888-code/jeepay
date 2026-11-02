@@ -74,3 +74,10 @@ UPDATE users
 - 安裝 → 登入 → 2FA 綁定頁完整流程正常；安裝後 `/install` 回 404；Session 檔寫入 `storage/sessions/`。
 
 InfinityFree 上線後仍須依上表再檢查一次（主機的 Apache 設定可能與開發環境不同）。
+
+### InfinityFree 正式環境驗證結果（2026-11-02，book888.free.je）
+
+- 部署包以 Upload & Unzip 上傳成功，PHP 8.4 下正常執行；
+- 設定說明頁 → 建立 `config.php` → 安裝 → 登入 → 2FA 綁定，流程完成；
+- `/config/config.php`：**403**；`/install`：**404**（安裝後停用）；
+- `http://…/login`：自動轉址到 https（已登入狀態再導向首頁）。
