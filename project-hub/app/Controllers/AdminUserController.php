@@ -5,9 +5,7 @@ declare(strict_types=1);
 namespace ProjectHub\Controllers;
 
 use ProjectHub\Activity\ActivityLogger as Log;
-use ProjectHub\Auth\LoginThrottle;
 use ProjectHub\Auth\Passwords;
-use ProjectHub\Auth\Totp;
 use ProjectHub\Auth\UserRepository;
 use ProjectHub\Authorization\GlobalPermissions;
 use ProjectHub\Database\Migrator;
@@ -22,12 +20,8 @@ use ProjectHub\Support\Clock;
  * 會改變帳號安全狀態的操作（建立帳號、停用、重設密碼／2FA、修改權限）需要「管理者再驗證」：
  * 輸入自己的驗證碼後 10 分鐘內有效，避免每個操作都要等下一組驗證碼。
  */
-final class AdminUserController extends Controller
+final class AdminUserController extends AdminController
 {
-    private const REAUTH_KEY = 'admin_reauth_until';
-    private const REAUTH_SECONDS = 600;
-    /** 再驗證後可返回的頁面（白名單，避免開放式轉址） */
-    private const RETURN_PATHS = ['/admin/users', '/admin/permissions'];
 
     public function home(Request $request): Response
     {
@@ -127,12 +121,14 @@ final class AdminUserController extends Controller
 
     public function resetTotp(Request $request, int $id): Response
     {
-        if (($deny = $this->requireElevated('/admin/users')) !== null) {
-            return $deny;
-        }
         $target = $this->app->users->findManageable($id);
         if ($target === null) {
             return $this->notFound();
+        }
+        // 高風險操作：不沿用 10 分鐘的再驗證狀態，每次都必須在確認視窗輸入新的驗證碼
+        if (($error = $this->verifyAdminCode($request)) !== null) {
+            $this->logTarget('admin.user.2fa_reset', $target, '驗證碼錯誤，未執行', Log::RESULT_FAILURE);
+            return $this->back('/admin/users', 'error', '重設 2FA未執行：' . $error);
         }
         $this->app->users->resetTotp($id);
         $this->logTarget('admin.user.2fa_reset', $target, '解除 2FA 綁定，下次登入需重新綁定');
@@ -141,12 +137,14 @@ final class AdminUserController extends Controller
 
     public function resetPassword(Request $request, int $id): Response
     {
-        if (($deny = $this->requireElevated('/admin/users')) !== null) {
-            return $deny;
-        }
         $target = $this->app->users->findManageable($id);
         if ($target === null) {
             return $this->notFound();
+        }
+        // 高風險操作：不沿用 10 分鐘的再驗證狀態，每次都必須在確認視窗輸入新的驗證碼
+        if (($error = $this->verifyAdminCode($request)) !== null) {
+            $this->logTarget('admin.user.password_reset', $target, '驗證碼錯誤，未執行', Log::RESULT_FAILURE);
+            return $this->back('/admin/users', 'error', '重設密碼未執行：' . $error);
         }
         $temporary = Passwords::temporary();
         $this->app->users->setTemporaryPassword($id, Passwords::hash($temporary));
@@ -209,19 +207,11 @@ final class AdminUserController extends Controller
     /** 管理者再驗證：輸入自己目前的驗證碼，10 分鐘內可執行敏感的管理操作。 */
     public function reauth(Request $request): Response
     {
-        $return = in_array($request->input('return'), self::RETURN_PATHS, true) ? $request->input('return') : '/admin/users';
+        $return = self::safeReturn($request->input('return'));
         $admin = $this->admin();
-        $key = $this->app->throttle->accountKey((string)$admin['username']);
-        if ($this->app->throttle->isLocked($key, $request->ip())) {
-            return $this->back($return, 'error', '嘗試次數過多，請稍後再試。');
-        }
-        $secret = $this->app->crypto->decrypt((string)$admin['totp_secret_enc'], 'totp');
-        $lastStep = $admin['totp_last_used_step'] === null ? null : (int)$admin['totp_last_used_step'];
-        $step = Totp::match($secret, $request->input('code'), $this->totpWindow(), $lastStep, Clock::now());
-        if ($step === null || !$this->app->users->consumeTotpStep((int)$admin['id'], $step)) {
-            $this->app->throttle->record($key, $request->ip(), LoginThrottle::STAGE_REAUTH, false);
+        if (($error = $this->verifyAdminCode($request)) !== null) {
             $this->app->logger->log('admin', 'admin.reauth', Log::RESULT_FAILURE, (int)$admin['id'], (string)$admin['username']);
-            return $this->back($return, 'error', '驗證碼錯誤或已使用過，請輸入驗證器上的最新驗證碼。');
+            return $this->back($return, 'error', $error);
         }
         $this->app->session->set(self::REAUTH_KEY, Clock::now() + self::REAUTH_SECONDS);
         $this->app->logger->log('admin', 'admin.reauth', Log::RESULT_SUCCESS, (int)$admin['id'], (string)$admin['username']);
@@ -259,32 +249,13 @@ final class AdminUserController extends Controller
         ], $status);
     }
 
-    private function elevated(): bool
-    {
-        $until = $this->app->session->get(self::REAUTH_KEY);
-        return is_int($until) && $until >= Clock::now();
-    }
 
-    private function requireElevated(string $return): ?Response
-    {
-        if ($this->elevated()) {
-            return null;
-        }
-        return $this->back($return, 'error', '此操作需要先輸入您的驗證碼完成身分驗證。');
-    }
 
-    /** @return array<string, mixed> */
-    private function admin(): array
-    {
-        return (array)$this->app->auth->user();
-    }
 
     /** @param array<string, mixed> $target */
     private function logTarget(string $action, array $target, ?string $detail = null, string $result = Log::RESULT_SUCCESS): void
     {
-        $admin = $this->admin();
-        $label = '對象：' . $target['username'] . ($detail === null ? '' : '；' . $detail);
-        $this->app->logger->log('admin', $action, $result, (int)$admin['id'], (string)$admin['username'], $label, null, null, (int)$target['id']);
+        $this->log($action, '對象：' . $target['username'] . ($detail === null ? '' : '；' . $detail), (int)$target['id'], null, null, $result);
     }
 
     private function globalPermissions(): GlobalPermissions
@@ -297,8 +268,4 @@ final class AdminUserController extends Controller
         return new Migrator($this->app->db, $this->app->basePath . '/database/migrations');
     }
 
-    private function notFound(): Response
-    {
-        return Response::html($this->app->plainPage('找不到頁面', '您要找的頁面不存在。'), 404);
-    }
 }

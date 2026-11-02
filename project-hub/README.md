@@ -12,7 +12,8 @@
 | 2 資料庫 Schema 設計 | 已完成（`database/migrations/0001_initial_schema.sql`） |
 | 3 使用者登入及 2FA | 已完成（測試報告見 [docs/05](docs/05-development-plan.md)） |
 | 4 全域權限管理 | 已完成（管理後台、使用者管理、全域權限、單一裝置登入） |
-| 5 專案管理及個別專案權限 | 下一步 |
+| 5 專案管理及個別專案權限 | 已完成（建立／列表／詳細／改名／刪除與回收區、專案授權名單、雙重授權） |
+| 6 專案說明、關鍵字、隨手記（含附件） | 下一步 |
 
 ## 文件
 
@@ -58,7 +59,7 @@ PH_TEST_DSN="mysql:host=127.0.0.1;dbname=ph_test;charset=utf8mb4" PH_TEST_USER=p
 php tests/schema_smoke_test.php
 ```
 
-最近一次結果（MariaDB 10.11、PHP 8.3）：單元 10、整合 48（登入 27＋管理後台 21）、Schema 26 項，全部通過。
+最近一次結果（MariaDB 10.11、PHP 8.3）：單元 10、整合 67（登入 27＋管理後台 23＋專案與雙重授權 17）、Schema 26 項，全部通過。
 
 ## 部署
 

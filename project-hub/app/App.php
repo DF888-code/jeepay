@@ -11,7 +11,8 @@ use ProjectHub\Auth\UserRepository;
 use ProjectHub\Controllers\AccountController;
 use ProjectHub\Controllers\AdminUserController;
 use ProjectHub\Controllers\AuthController;
-use ProjectHub\Controllers\HomeController;
+use ProjectHub\Controllers\AdminProjectController;
+use ProjectHub\Controllers\ProjectController;
 use ProjectHub\Database\Migrator;
 use ProjectHub\Controllers\InstallController;
 use ProjectHub\Http\Request;
@@ -63,7 +64,14 @@ final class App
     private static function routes(): array
     {
         return [
-            'GET /' => [self::ACCESS_AUTH, HomeController::class, 'index'],
+            'GET /' => [self::ACCESS_AUTH, ProjectController::class, 'index'],
+            'GET /projects/new' => [self::ACCESS_AUTH, ProjectController::class, 'showCreate'],
+            'POST /projects' => [self::ACCESS_AUTH, ProjectController::class, 'create'],
+            'GET /projects/{id}' => [self::ACCESS_AUTH, ProjectController::class, 'show'],
+            'POST /projects/{id}/rename' => [self::ACCESS_AUTH, ProjectController::class, 'rename'],
+            'POST /projects/{id}/delete' => [self::ACCESS_AUTH, ProjectController::class, 'delete'],
+            'GET /api/projects' => [self::ACCESS_AUTH, ProjectController::class, 'apiList'],
+            'GET /api/projects/{id}' => [self::ACCESS_AUTH, ProjectController::class, 'apiShow'],
             'GET /login' => [self::ACCESS_GUEST, AuthController::class, 'showLogin'],
             'POST /login' => [self::ACCESS_GUEST, AuthController::class, 'login'],
             'GET /login/totp' => [self::ACCESS_TOTP, AuthController::class, 'showTotp'],
@@ -91,6 +99,10 @@ final class App
             'GET /admin/migrate' => [self::ACCESS_ADMIN, AdminUserController::class, 'showMigrations'],
             'POST /admin/migrate' => [self::ACCESS_ADMIN, AdminUserController::class, 'migrate'],
             'GET /admin/permissions' => [self::ACCESS_ADMIN, AdminUserController::class, 'permissions'],
+            'GET /admin/projects' => [self::ACCESS_ADMIN, AdminProjectController::class, 'index'],
+            'POST /admin/projects/{id}/restore' => [self::ACCESS_ADMIN, AdminProjectController::class, 'restore'],
+            'GET /admin/projects/{id}/permissions' => [self::ACCESS_ADMIN, AdminProjectController::class, 'permissions'],
+            'POST /admin/projects/{id}/permissions/{id}' => [self::ACCESS_ADMIN, AdminProjectController::class, 'savePermission'],
             'POST /admin/permissions/{id}' => [self::ACCESS_ADMIN, AdminUserController::class, 'savePermissions'],
             'GET /install' => [self::ACCESS_INSTALL, InstallController::class, 'show'],
             'POST /install' => [self::ACCESS_INSTALL, InstallController::class, 'install'],

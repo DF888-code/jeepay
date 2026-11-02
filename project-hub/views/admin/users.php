@@ -76,8 +76,8 @@ $disabledAttr = empty($elevated) ? ' disabled' : '';
             <div class="col-12 col-lg-5 text-lg-end">
               <div class="d-flex flex-wrap gap-2 justify-content-lg-end">
                 <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#edit-<?= $uid ?>">編輯</button>
-                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#pw-<?= $uid ?>"<?= $disabledAttr ?>>重設密碼</button>
-                <button type="button" class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#tf-<?= $uid ?>"<?= $disabledAttr ?>>重設 2FA</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#pw-<?= $uid ?>">重設密碼</button>
+                <button type="button" class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#tf-<?= $uid ?>">重設 2FA</button>
                 <button type="button" class="btn btn-sm <?= $isActive ? 'btn-outline-danger' : 'btn-outline-success' ?>" data-bs-toggle="modal" data-bs-target="#st-<?= $uid ?>"<?= $disabledAttr ?>><?= $isActive ? '停用' : '啟用' ?></button>
               </div>
             </div>
@@ -103,13 +103,13 @@ $disabledAttr = empty($elevated) ? ' disabled' : '';
           <?php
           // 每個敏感操作都以確認視窗再送出，並清楚標示操作對象
           $modals = [
-              'pw' => ['重設密碼', "/admin/users/{$uid}/reset-password", '系統會產生新的臨時密碼並登出對方所有裝置，對方下次登入後必須變更密碼。', 'btn-primary', '重設密碼', []],
-              'tf' => ['重設 2FA', "/admin/users/{$uid}/reset-2fa", '用於員工遺失手機。解除後對方所有裝置會登出，下次登入必須重新掃描 QR Code，完成前無法使用系統。', 'btn-warning', '解除 2FA 綁定', []],
+              'pw' => ['重設密碼', "/admin/users/{$uid}/reset-password", '系統會產生新的臨時密碼並登出對方所有裝置，對方下次登入後必須變更密碼。', 'btn-primary', '重設密碼', [], true],
+              'tf' => ['重設 2FA', "/admin/users/{$uid}/reset-2fa", '用於員工遺失手機。解除後對方所有裝置會登出，下次登入必須重新掃描 QR Code，完成前無法使用系統。', 'btn-warning', '解除 2FA 綁定', [], true],
               'st' => [$isActive ? '停用帳號' : '啟用帳號', "/admin/users/{$uid}/status",
                   $isActive ? '停用後對方會立即被登出，且無法再登入。資料不會被刪除，可隨時重新啟用。' : '重新啟用後，對方可再次登入。',
-                  $isActive ? 'btn-danger' : 'btn-success', $isActive ? '停用' : '啟用', ['status' => $isActive ? 'disabled' : 'active']],
+                  $isActive ? 'btn-danger' : 'btn-success', $isActive ? '停用' : '啟用', ['status' => $isActive ? 'disabled' : 'active'], false],
           ];
-          foreach ($modals as $prefix => [$mTitle, $mAction, $mText, $mBtnClass, $mBtn, $mHidden]): ?>
+          foreach ($modals as $prefix => [$mTitle, $mAction, $mText, $mBtnClass, $mBtn, $mHidden, $needsCode]): ?>
             <div class="modal fade" id="<?= $prefix ?>-<?= $uid ?>" tabindex="-1" aria-labelledby="<?= $prefix ?>-<?= $uid ?>-title" aria-hidden="true">
               <div class="modal-dialog modal-dialog-centered">
                 <form method="post" action="<?= e($mAction) ?>" class="modal-content">
@@ -122,6 +122,13 @@ $disabledAttr = empty($elevated) ? ' disabled' : '';
                   <div class="modal-body">
                     <p class="mb-0"><?= e($mText) ?></p>
                     <p class="small text-body-secondary mb-0 mt-2">操作對象：<?= e($u['display_name']) ?>（<?= e($u['username']) ?>）</p>
+                    <?php if ($needsCode): ?>
+                      <div class="mt-3">
+                        <label for="<?= $prefix ?>-<?= $uid ?>-code" class="form-label">請輸入<strong>您自己</strong>驗證器上的驗證碼以確認</label>
+                        <input id="<?= $prefix ?>-<?= $uid ?>-code" name="code" class="form-control code-input" inputmode="numeric" pattern="[0-9 ]*" maxlength="7" autocomplete="one-time-code" required>
+                        <div class="form-text">此操作每次都需要輸入新的驗證碼。</div>
+                      </div>
+                    <?php endif; ?>
                   </div>
                   <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>

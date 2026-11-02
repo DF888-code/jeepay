@@ -1,0 +1,191 @@
+<?php
+
+declare(strict_types=1);
+
+namespace ProjectHub\Controllers;
+
+use ProjectHub\Activity\ActivityLogger as Log;
+use ProjectHub\Authorization\Authorizer;
+use ProjectHub\Http\Request;
+use ProjectHub\Http\Response;
+use ProjectHub\Project\ProjectRepository;
+use ProjectHub\Search\TextNormalizer;
+
+/**
+ * 專案列表、建立、詳細頁、改名、刪除（階段 5）。
+ *
+ * 每個動作都先經過 Authorizer 的雙重授權；不符合時一律回應與「專案不存在」相同的 404，
+ * 不洩漏專案名稱或存在與否，並在歷史操作紀錄留下拒絕事件。
+ */
+final class ProjectController extends Controller
+{
+    private const PAGE_SIZE = 30;
+
+    public function index(Request $request): Response
+    {
+        $uid = (int)$this->app->auth->userId();
+        $page = max(1, (int)$request->query('page', '1'));
+        $result = $this->projects()->listVisible($uid, self::PAGE_SIZE, ($page - 1) * self::PAGE_SIZE);
+        return $this->render('projects/index', [
+            'title' => '專案',
+            'projects' => $result['items'],
+            'total' => $result['total'],
+            'page' => $page,
+            'pages' => max(1, (int)ceil($result['total'] / self::PAGE_SIZE)),
+            'canCreate' => $this->authorizer()->canCreate($uid),
+        ]);
+    }
+
+    public function showCreate(Request $request): Response
+    {
+        if (!$this->authorizer()->canCreate((int)$this->app->auth->userId())) {
+            return $this->deny('project.create', null);
+        }
+        return $this->render('projects/new', ['title' => '建立專案', 'old' => []]);
+    }
+
+    public function create(Request $request): Response
+    {
+        $user = (array)$this->app->auth->user();
+        $uid = (int)$user['id'];
+        if (!$this->authorizer()->canCreate($uid)) {
+            return $this->deny('project.create', null);
+        }
+        $name = trim(TextNormalizer::clean($request->input('name')));
+        $description = TextNormalizer::clean($request->input('description'));
+        $error = $this->validateName($name);
+        if ($error === null && trim($description) === '') {
+            $error = '請輸入專案說明。';
+        } elseif ($error === null && mb_strlen($description) > ProjectRepository::DESCRIPTION_MAX) {
+            $error = '專案說明不可超過 ' . ProjectRepository::DESCRIPTION_MAX . ' 字。';
+        }
+        if ($error !== null) {
+            return $this->render('projects/new', ['title' => '建立專案', 'old' => ['name' => $name, 'description' => $description], 'error' => $error], 422);
+        }
+
+        $isAdmin = (int)$user['is_super_admin'] === 1;
+        $id = $this->projects()->create($name, $description, $uid, !$isAdmin);
+        $this->app->logger->log('data', 'project.create', Log::RESULT_SUCCESS, $uid, (string)$user['username'], null, $id, $name);
+        return $this->back("/projects/{$id}", 'success', $isAdmin
+            ? '專案已建立。可到「管理後台 → 專案管理」設定授權名單。'
+            : '專案已建立，您已自動取得此專案的查看與編輯權限。');
+    }
+
+    public function show(Request $request, int $id): Response
+    {
+        $uid = (int)$this->app->auth->userId();
+        if (!$this->authorizer()->can($uid, Authorizer::VIEW, $id)) {
+            return $this->deny('project.view', $id);
+        }
+        $project = (array)$this->projects()->find($id);
+        $this->app->logger->log('project', 'project.view', Log::RESULT_SUCCESS, $uid, $this->app->auth->label(), null, $id, (string)$project['name']);
+        return $this->render('projects/show', [
+            'title' => (string)$project['name'],
+            'project' => $project,
+            'can' => $this->authorizer()->abilities($uid, $id),
+            'isAdmin' => (int)($this->app->auth->user()['is_super_admin'] ?? 0) === 1,
+        ]);
+    }
+
+    public function rename(Request $request, int $id): Response
+    {
+        $uid = (int)$this->app->auth->userId();
+        if (!$this->authorizer()->can($uid, Authorizer::EDIT, $id)) {
+            return $this->deny('project.rename', $id);
+        }
+        $name = trim(TextNormalizer::clean($request->input('name')));
+        $error = $this->validateName($name);
+        if ($error !== null) {
+            return $this->back("/projects/{$id}", 'error', $error);
+        }
+        $before = (string)$this->projects()->find($id)['name'];
+        $this->projects()->rename($id, $name, $uid);
+        $this->app->logger->log('data', 'project.rename', Log::RESULT_SUCCESS, $uid, $this->app->auth->label(), '原名稱：' . $before, $id, $name);
+        return $this->back("/projects/{$id}", 'success', '專案名稱已更新。');
+    }
+
+    public function delete(Request $request, int $id): Response
+    {
+        $uid = (int)$this->app->auth->userId();
+        if (!$this->authorizer()->can($uid, Authorizer::DELETE, $id)) {
+            return $this->deny('project.delete', $id);
+        }
+        $project = (array)$this->projects()->find($id);
+        // 刪除前要求輸入專案名稱，避免誤按
+        if (trim($request->input('confirm_name')) !== (string)$project['name']) {
+            return $this->back("/projects/{$id}", 'error', '確認名稱不符，專案未刪除。');
+        }
+        $this->projects()->softDelete($id, $uid);
+        $this->app->logger->log('data', 'project.delete', Log::RESULT_SUCCESS, $uid, $this->app->auth->label(), '移至回收區（可由最高權限管理者還原）', $id, (string)$project['name']);
+        return $this->back('/', 'success', '專案已刪除。若需要復原，請聯絡最高權限管理者。');
+    }
+
+    /** JSON API：與頁面套用完全相同的雙重授權。 */
+    public function apiList(Request $request): Response
+    {
+        $page = max(1, (int)$request->query('page', '1'));
+        $result = $this->projects()->listVisible((int)$this->app->auth->userId(), self::PAGE_SIZE, ($page - 1) * self::PAGE_SIZE);
+        return Response::json([
+            'total' => $result['total'],
+            'items' => array_map(static fn(array $p): array => ['id' => (int)$p['id'], 'name' => (string)$p['name']], $result['items']),
+        ]);
+    }
+
+    public function apiShow(Request $request, int $id): Response
+    {
+        $uid = (int)$this->app->auth->userId();
+        if (!$this->authorizer()->can($uid, Authorizer::VIEW, $id)) {
+            return $this->deny('project.view', $id);
+        }
+        $project = (array)$this->projects()->find($id);
+        return Response::json([
+            'id' => $id,
+            'name' => (string)$project['name'],
+            'description' => (string)$project['description'],
+            'description_version' => (int)$project['description_version'],
+            'permissions' => $this->authorizer()->abilities($uid, $id),
+        ]);
+    }
+
+    /**
+     * 拒絕：回應與「找不到」完全相同，紀錄中則保留嘗試存取的專案編號供管理者查看。
+     * 紀錄不寫入專案名稱以外的內容；名稱只有最高權限管理者看得到。
+     */
+    private function deny(string $action, ?int $projectId): Response
+    {
+        $label = null;
+        if ($projectId !== null) {
+            $project = $this->projects()->findAny($projectId);
+            $label = $project === null ? null : (string)$project['name'];
+        }
+        $this->app->logger->log('project', $action, Log::RESULT_DENIED, $this->app->auth->userId(), $this->app->auth->label(),
+            null, $projectId !== null && $label !== null ? $projectId : null, $label);
+        return $this->app->request->wantsJson()
+            ? Response::json(['error' => '找不到資源'], 404)
+            : Response::html($this->app->plainPage('找不到頁面', '您要找的頁面不存在。'), 404);
+    }
+
+    private function validateName(string $name): ?string
+    {
+        if ($name === '') {
+            return '請輸入專案名稱。';
+        }
+        if (mb_strlen($name) > ProjectRepository::NAME_MAX) {
+            return '專案名稱不可超過 ' . ProjectRepository::NAME_MAX . ' 字。';
+        }
+        if (str_contains($name, "\n")) {
+            return '專案名稱不可換行。';
+        }
+        return null;
+    }
+
+    private function authorizer(): Authorizer
+    {
+        return new Authorizer($this->app->db);
+    }
+
+    private function projects(): ProjectRepository
+    {
+        return new ProjectRepository($this->app->db, $this->authorizer());
+    }
+}

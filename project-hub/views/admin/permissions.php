@@ -28,10 +28,10 @@ $disabledAttr = empty($elevated) ? ' disabled' : '';
               <div class="fw-semibold"><?= e($u['display_name']) ?></div>
               <div class="small text-body-secondary"><?= e($u['username']) ?><?= $u['status'] !== 'active' ? ' · 已停用' : '' ?></div>
             </div>
-            <?php foreach ($fields as $field => $label): $cid = "p{$uid}-{$field}"; ?>
+            <?php foreach ($fields as $field => $label): $cid = "p{$uid}-{$field}"; $role = ['can_view_projects' => 'view', 'can_edit_projects' => 'edit', 'can_delete_projects' => 'delete'][$field] ?? ''; ?>
               <div class="col-6 col-md-1 text-md-center">
                 <div class="form-check form-check-inline m-0 d-md-flex justify-content-md-center">
-                  <input class="form-check-input" type="checkbox" id="<?= e($cid) ?>" name="<?= e($field) ?>" value="1" data-perm="<?= e($field) ?>"<?= (int)$u[$field] === 1 ? ' checked' : '' ?>>
+                  <input class="form-check-input" type="checkbox" id="<?= e($cid) ?>" name="<?= e($field) ?>" value="1" data-perm="<?= e($field) ?>" data-perm-role="<?= e($role) ?>"<?= (int)$u[$field] === 1 ? ' checked' : '' ?>>
                   <label class="form-check-label ms-1 d-md-none" for="<?= e($cid) ?>"><?= e($label) ?></label>
                   <label class="visually-hidden" for="<?= e($cid) ?>"><?= e($u['display_name']) ?>：<?= e($label) ?></label>
                 </div>

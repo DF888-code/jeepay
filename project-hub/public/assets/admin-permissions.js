@@ -1,4 +1,5 @@
-// 全域權限頁：只負責操作體驗（標示未儲存、自動勾選查看、離開前提醒）。
+// 全域權限與專案權限頁：只負責操作體驗（標示未儲存、自動勾選查看、離開前提醒）。
+// 勾選框以 data-perm-role="view|edit|delete" 標示角色。
 // 權限是否生效完全由伺服器決定；此檔不參與任何權限判斷。
 (function () {
   var rows = document.querySelectorAll('[data-perm-row]');
@@ -13,19 +14,18 @@
   rows.forEach(function (form) {
     var initial = snapshot(form);
     var badge = form.querySelector('[data-dirty-badge]');
-    var view = form.querySelector('[data-perm="can_view_projects"]');
+    var view = form.querySelector('[data-perm-role="view"]');
 
     form.addEventListener('change', function (event) {
       var target = event.target;
-      var name = target.getAttribute('data-perm');
+      var role = target.getAttribute('data-perm-role');
       // 與伺服器規則一致：編輯、刪除需要查看；取消查看時一併取消編輯、刪除
-      if ((name === 'can_edit_projects' || name === 'can_delete_projects') && target.checked && view) {
+      if ((role === 'edit' || role === 'delete') && target.checked && view) {
         view.checked = true;
       }
-      if (name === 'can_view_projects' && !target.checked) {
-        ['can_edit_projects', 'can_delete_projects'].forEach(function (n) {
-          var box = form.querySelector('[data-perm="' + n + '"]');
-          if (box) { box.checked = false; }
+      if (role === 'view' && !target.checked) {
+        form.querySelectorAll('[data-perm-role="edit"], [data-perm-role="delete"]').forEach(function (box) {
+          box.checked = false;
         });
       }
       var dirty = snapshot(form) !== initial;

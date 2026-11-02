@@ -222,12 +222,21 @@ test('停用帳號：登入中的員工立即被登出且無法再登入；重�
     assert_same(200, $again->get('/api/me')->status);
 });
 
-test('重設 2FA（員工遺失手機）：員工所有裝置登出，下次登入必須重新綁定', function () use (&$admin): void {
+test('重設 2FA（員工遺失手機）：每次都需輸入驗證碼；員工所有裝置登出，下次登入必須重新綁定', function () use (&$admin): void {
     $alice = browser();
     loginFull($alice, 'alice', 'Alice-Own-Pass-1');
     $id = (int)userRow('alice')['id'];
+    // 即使已完成 10 分鐘再驗證，沒有輸入或輸入錯誤的驗證碼仍不可執行
     $admin->get('/admin/users');
     $admin->post("/admin/users/{$id}/reset-2fa", []);
+    assert_contains('重設 2FA未執行', $admin->get('/admin/users')->body);
+    $admin->post("/admin/users/{$id}/reset-2fa", ['code' => '000000']);
+    assert_same(200, $alice->get('/api/me')->status, '驗證碼錯誤時不可重設');
+    assert_same(1, (int)userRow('alice')['totp_enabled']);
+
+    allowCurrentCode(ADMIN_USER);
+    $admin->get('/admin/users');
+    $admin->post("/admin/users/{$id}/reset-2fa", ['code' => codeNow(activeSecret(ADMIN_USER))]);
     assert_contains('已解除「員工 A」的 2FA 綁定', $admin->get('/admin/users')->body);
     assert_same(401, $alice->get('/api/me')->status);
     $b = browser()->submit('/login', '/login', ['username' => 'alice', 'password' => 'Alice-Own-Pass-1']);
@@ -235,11 +244,17 @@ test('重設 2FA（員工遺失手機）：員工所有裝置登出，下次登�
     assert_same(403, $b->get('/api/me')->status);
 });
 
-test('重設密碼：舊密碼失效、產生新臨時密碼、下次登入必須變更', function () use (&$admin): void {
+test('重設密碼：每次都需輸入驗證碼；舊密碼失效、產生新臨時密碼、下次登入必須變更', function () use (&$admin): void {
     $id = (int)userRow('bob')['id'];
     $before = userRow('bob')['password_hash'];
     $admin->get('/admin/users');
     $admin->post("/admin/users/{$id}/reset-password", []);
+    assert_contains('重設密碼未執行', $admin->get('/admin/users')->body);
+    assert_same($before, userRow('bob')['password_hash'], '沒有驗證碼不可重設密碼');
+
+    allowCurrentCode(ADMIN_USER);
+    $admin->get('/admin/users');
+    $admin->post("/admin/users/{$id}/reset-password", ['code' => codeNow(activeSecret(ADMIN_USER))]);
     $admin->get('/admin/users');
     $temp = oneTimePassword($admin);
     $row = userRow('bob');
