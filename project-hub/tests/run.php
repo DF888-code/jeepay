@@ -98,6 +98,8 @@ try {
     $failures += run_registered_tests('整合測試：專案與雙重授權（階段 5）');
     require __DIR__ . '/Integration/ContentTest.php';
     $failures += run_registered_tests('整合測試：專案說明、關鍵字、隨手記（階段 6a）');
+    require __DIR__ . '/Integration/AttachmentTest.php';
+    $failures += run_registered_tests('整合測試：隨手記附件（階段 6b）');
 } finally {
     proc_terminate($server);
     @unlink($tmp . '/config.php');

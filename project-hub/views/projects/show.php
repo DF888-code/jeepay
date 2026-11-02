@@ -89,10 +89,11 @@
   <div class="card-header fw-semibold">隨手記</div>
   <div class="card-body">
     <?php if ($can['edit'] && !$olderPage): ?>
-      <form method="post" action="/projects/<?= (int)$project['id'] ?>/notes" class="mb-4">
+      <form method="post" action="/projects/<?= (int)$project['id'] ?>/notes" class="mb-4" data-uploader data-upload-url="/api/projects/<?= (int)$project['id'] ?>/attachments">
         <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
         <label for="new-note" class="visually-hidden">新增隨手記</label>
-        <textarea id="new-note" name="content" class="form-control mb-2" rows="3" maxlength="20000" placeholder="快速記下任何資訊：錯誤與解法、技術筆記、提醒…" required></textarea>
+        <textarea id="new-note" name="content" class="form-control mb-2" rows="3" maxlength="20000" placeholder="快速記下任何資訊：錯誤與解法、技術筆記、提醒…（可直接把截圖拖進來）"></textarea>
+        <?php require __DIR__ . '/_uploader.php'; ?>
         <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
           <span class="small text-body-secondary">作者會自動記錄為您本人。若包含密碼等敏感資訊，請確認此專案的授權對象。</span>
           <button type="submit" class="btn btn-primary btn-sm flex-shrink-0 text-nowrap">新增隨手記</button>
@@ -119,12 +120,14 @@
                 <?php endif; ?>
               </span>
             </header>
-            <div class="text-break text-pre-wrap"><?= e($n['content']) ?></div>
+            <?php if (trim((string)$n['content']) !== ''): ?><div class="text-break text-pre-wrap"><?= e($n['content']) ?></div><?php endif; ?>
+            <?php $items = $attachments[$nid] ?? []; if ($items !== []) { require __DIR__ . '/_attachments.php'; } ?>
             <?php if ($n['can_edit']): ?>
-              <form method="post" action="/projects/<?= (int)$project['id'] ?>/notes/<?= $nid ?>/update" class="collapse mt-3" id="note-edit-<?= $nid ?>">
+              <form method="post" action="/projects/<?= (int)$project['id'] ?>/notes/<?= $nid ?>/update" class="collapse mt-3" id="note-edit-<?= $nid ?>" data-uploader data-upload-url="/api/projects/<?= (int)$project['id'] ?>/attachments">
                 <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
                 <label for="note-content-<?= $nid ?>" class="visually-hidden">修改隨手記</label>
-                <textarea id="note-content-<?= $nid ?>" name="content" class="form-control mb-2" rows="4" maxlength="20000" required><?= e($n['content']) ?></textarea>
+                <textarea id="note-content-<?= $nid ?>" name="content" class="form-control mb-2" rows="4" maxlength="20000"><?= e($n['content']) ?></textarea>
+                <?php require __DIR__ . '/_uploader.php'; ?>
                 <button type="submit" class="btn btn-sm btn-primary">儲存修改</button>
               </form>
             <?php endif; ?>
@@ -179,3 +182,20 @@
     </div>
   </div>
 <?php endif; ?>
+
+<div class="modal fade" id="image-viewer" tabindex="-1" aria-labelledby="image-viewer-title" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-fullscreen-md-down">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title h6 text-truncate" id="image-viewer-title">圖片</h2>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="關閉"></button>
+      </div>
+      <div class="modal-body text-center p-2">
+        <img src="" alt="" class="img-fluid viewer-image" data-viewer-image>
+      </div>
+      <div class="modal-footer py-1">
+        <a href="#" class="btn btn-sm btn-outline-secondary" target="_blank" rel="noopener" data-viewer-open>在新分頁開啟原圖</a>
+      </div>
+    </div>
+  </div>
+</div>

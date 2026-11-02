@@ -26,3 +26,11 @@
 .text-pre-wrap { white-space: pre-wrap; }
 .form-card { max-width: 760px; }
 .keyword-remove { width: .55em; height: .55em; }
+
+/* 隨手記附件 */
+.note-dropzone { border: 2px dashed var(--bs-border-color); background: var(--bs-tertiary-bg); }
+.note-dropzone.is-dragover, [data-uploader].is-dragover .note-dropzone { border-color: var(--bs-primary); background: var(--bs-primary-bg-subtle); }
+.note-image { width: 100%; aspect-ratio: 4 / 3; object-fit: contain; cursor: zoom-in; background: #fff; }
+.viewer-image { max-height: 80vh; }
+.file-ext { min-width: 3.2rem; }
+.upload-thumb { width: 48px; height: 48px; object-fit: cover; }

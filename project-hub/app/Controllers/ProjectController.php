@@ -8,6 +8,8 @@ use ProjectHub\Activity\ActivityLogger as Log;
 use ProjectHub\Authorization\Authorizer;
 use ProjectHub\Http\Request;
 use ProjectHub\Http\Response;
+use ProjectHub\Attachment\AttachmentRepository;
+use ProjectHub\Attachment\UploadInspector;
 use ProjectHub\Project\KeywordRepository;
 use ProjectHub\Project\NoteRepository;
 use ProjectHub\Project\ProjectRepository;
@@ -90,6 +92,7 @@ final class ProjectController extends ProjectBaseController
             $note['can_delete'] = ($mine && $can['edit']) || $can['delete'];
         }
         unset($note);
+        $attachments = (new AttachmentRepository($this->app->db))->forNotes(array_map(static fn(array $n): int => (int)$n['id'], $notes['items']));
         // 只在第一頁記錄「進入專案」，翻頁載入更早的隨手記不重複記錄
         if ($before === '') {
             $this->app->logger->log('project', 'project.view', Log::RESULT_SUCCESS, $uid, $this->app->auth->label(), null, $id, (string)$project['name']);
@@ -103,6 +106,10 @@ final class ProjectController extends ProjectBaseController
             'notes' => $notes['items'],
             'nextBefore' => $notes['next'],
             'olderPage' => $before !== '',
+            'attachments' => $attachments,
+            'acceptTypes' => UploadInspector::acceptAttribute(),
+            'maxFileMb' => $this->app->settings->int('attachments.max_file_mb'),
+            'scripts' => $can['edit'] ? ['/assets/note-attachments.js', '/assets/image-viewer.js'] : ['/assets/image-viewer.js'],
         ]);
     }
 

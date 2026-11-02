@@ -38,6 +38,12 @@ final class Browser
         return $this->request('POST', $path, $data);
     }
 
+    /** 以 multipart 上傳單一檔案（模擬前端的附件上傳），CSRF Token 以標頭傳送。 */
+    public function upload(string $path, string $filePath, string $fileName): self
+    {
+        return $this->request('POST', $path, ['file' => new CURLFile($filePath, 'application/octet-stream', $fileName)], ['X-CSRF-Token: ' . $this->csrf()]);
+    }
+
     /** 送出表單：先 GET 表單頁取得 CSRF Token，再 POST。 */
     public function submit(string $formPath, string $action, array $data): self
     {
@@ -71,8 +77,11 @@ final class Browser
         return '';
     }
 
-    /** @param array<string, string>|null $data */
-    private function request(string $method, string $path, ?array $data): self
+    /**
+     * @param array<string, mixed>|null $data
+     * @param list<string> $extraHeaders
+     */
+    private function request(string $method, string $path, ?array $data, array $extraHeaders = []): self
     {
         $ch = curl_init($this->baseUrl . $path);
         $this->headers = [];
@@ -94,7 +103,11 @@ final class Browser
             },
         ]);
         if ($data !== null) {
-            curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data));
+            $hasFile = array_filter($data, static fn($v): bool => $v instanceof CURLFile) !== [];
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $hasFile ? $data : http_build_query($data));
+        }
+        if ($extraHeaders !== []) {
+            curl_setopt($ch, CURLOPT_HTTPHEADER, $extraHeaders);
         }
         $this->body = (string)curl_exec($ch);
         $this->status = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);

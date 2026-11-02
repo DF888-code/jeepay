@@ -16,7 +16,8 @@ final class Request
         public readonly string $path,
         private array $query,
         private array $post,
-        private array $server
+        private array $server,
+        private array $files = []
     ) {
     }
 
@@ -30,7 +31,8 @@ final class Request
             $path,
             $_GET,
             $_POST,
-            $_SERVER
+            $_SERVER,
+            $_FILES
         );
     }
 
@@ -39,6 +41,23 @@ final class Request
     {
         $v = $this->post[$key] ?? $default;
         return is_string($v) ? $v : $default;
+    }
+
+    /** @return list<string> 陣列型輸入（例如 attachment_ids[]）；非字串元素一律忽略 */
+    public function inputList(string $key): array
+    {
+        $v = $this->post[$key] ?? [];
+        return is_array($v) ? array_values(array_filter($v, 'is_string')) : [];
+    }
+
+    /** @return array{name:string,tmp_name:string,size:int,error:int}|null 單一上傳檔案；多檔或格式不符時回傳 null */
+    public function file(string $key): ?array
+    {
+        $f = $this->files[$key] ?? null;
+        if (!is_array($f) || !is_string($f['name'] ?? null) || !is_string($f['tmp_name'] ?? null)) {
+            return null;
+        }
+        return ['name' => $f['name'], 'tmp_name' => $f['tmp_name'], 'size' => (int)($f['size'] ?? 0), 'error' => (int)($f['error'] ?? UPLOAD_ERR_NO_FILE)];
     }
 
     public function query(string $key, string $default = ''): string

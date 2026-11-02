@@ -130,12 +130,15 @@ final class ProjectContentController extends ProjectBaseController
         if (!$this->authorizer()->can($this->uid(), Authorizer::EDIT, $id)) {
             return $this->deny('note.create', $id);
         }
-        $content = $this->noteContent($request);
+        $attachmentIds = $request->inputList('attachment_ids');
+        $content = $this->noteContent($request, $attachmentIds !== []);
         if (is_string($content) === false) {
             return $this->back("/projects/{$id}#notes", 'error', $content[0]);
         }
         $noteId = $this->notes()->create($id, $this->uid(), $content);
-        $this->app->logger->log('data', 'note.create', Log::RESULT_SUCCESS, $this->uid(), $this->app->auth->label(), "隨手記 #{$noteId}", $id, $this->projectName($id));
+        $attached = AttachmentController::attachToNote($this->app, $attachmentIds, $noteId, $id, $this->uid());
+        $this->app->logger->log('data', 'note.create', Log::RESULT_SUCCESS, $this->uid(), $this->app->auth->label(),
+            "隨手記 #{$noteId}" . ($attached > 0 ? "（附件 {$attached} 個）" : ''), $id, $this->projectName($id));
         return $this->back("/projects/{$id}#notes", 'success', '已新增隨手記。');
     }
 
@@ -146,11 +149,14 @@ final class ProjectContentController extends ProjectBaseController
         if ($note === null || !$this->authorizer()->can($this->uid(), Authorizer::EDIT, $id) || (int)$note['author_id'] !== $this->uid()) {
             return $this->deny('note.update', $id);
         }
-        $content = $this->noteContent($request);
+        $attachmentIds = $request->inputList('attachment_ids');
+        $hasAttachments = $attachmentIds !== [] || (new \ProjectHub\Attachment\AttachmentRepository($this->app->db))->countForNote($noteId) > 0;
+        $content = $this->noteContent($request, $hasAttachments);
         if (is_string($content) === false) {
             return $this->back("/projects/{$id}#note-{$noteId}", 'error', $content[0]);
         }
         $this->notes()->update($noteId, $content, $this->uid());
+        AttachmentController::attachToNote($this->app, $attachmentIds, $noteId, $id, $this->uid());
         $this->app->logger->log('data', 'note.update', Log::RESULT_SUCCESS, $this->uid(), $this->app->auth->label(), "隨手記 #{$noteId}", $id, $this->projectName($id));
         return $this->back("/projects/{$id}#note-{$noteId}", 'success', '隨手記已更新。');
     }
@@ -194,12 +200,16 @@ final class ProjectContentController extends ProjectBaseController
         return $this->authorizer()->can($this->uid(), Authorizer::DELETE, $projectId);
     }
 
-    /** @return string|array{0:string} 驗證通過回傳內容，否則回傳 [錯誤訊息] */
-    private function noteContent(Request $request): string|array
+    /**
+     * 有附件時允許不輸入文字（例如只貼一張錯誤截圖）。
+     *
+     * @return string|array{0:string} 驗證通過回傳內容，否則回傳 [錯誤訊息]
+     */
+    private function noteContent(Request $request, bool $hasAttachments = false): string|array
     {
         $content = rtrim(TextNormalizer::clean($request->input('content')));
-        if (trim($content) === '') {
-            return ['請輸入隨手記內容。'];
+        if (trim($content) === '' && !$hasAttachments) {
+            return ['請輸入隨手記內容或附加檔案。'];
         }
         if (mb_strlen($content) > NoteRepository::MAX_LENGTH) {
             return ['隨手記不可超過 ' . NoteRepository::MAX_LENGTH . ' 字。'];

@@ -56,6 +56,21 @@ final class SettingsRegistry
                 'category' => 'security', 'label' => '單一裝置登入', 'type' => 'bool', 'default' => true,
                 'help' => '開啟時，在新裝置或新瀏覽器完成登入後，同一帳號在其他裝置的登入狀態會立即失效。',
             ],
+            'attachments.max_file_mb' => [
+                'category' => 'attachments', 'label' => '單一檔案上限（MB）', 'type' => 'int', 'default' => 10,
+                'min' => 1, 'max' => 10, 'help' => 'InfinityFree 單檔上限為 10 MB，超過會被主機刪除。',
+            ],
+            'attachments.max_per_note' => [
+                'category' => 'attachments', 'label' => '每則隨手記附件上限', 'type' => 'int', 'default' => 20, 'min' => 1, 'max' => 50,
+            ],
+            'attachments.quota_mb' => [
+                'category' => 'attachments', 'label' => '附件總容量上限（MB）', 'type' => 'int', 'default' => 500, 'min' => 10, 'max' => 2048,
+                'help' => '決議 #24：降低免費主機被認定為檔案儲存用途的風險。',
+            ],
+            'attachments.max_files' => [
+                'category' => 'attachments', 'label' => '附件檔案數上限', 'type' => 'int', 'default' => 5000, 'min' => 100, 'max' => 20000,
+                'help' => '每張圖片會另存一個預覽檔；主機總檔案數上限約 30,000。',
+            ],
             'security.password_min_length' => [
                 'category' => 'security', 'label' => '密碼最短長度', 'type' => 'int', 'default' => 10,
                 'min' => 8, 'max' => 64,

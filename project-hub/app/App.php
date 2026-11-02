@@ -10,6 +10,7 @@ use ProjectHub\Auth\LoginThrottle;
 use ProjectHub\Auth\UserRepository;
 use ProjectHub\Controllers\AccountController;
 use ProjectHub\Controllers\AdminUserController;
+use ProjectHub\Controllers\AttachmentController;
 use ProjectHub\Controllers\AuthController;
 use ProjectHub\Controllers\AdminProjectController;
 use ProjectHub\Controllers\ProjectContentController;
@@ -80,6 +81,12 @@ final class App
             'POST /projects/{id}/notes/{id}/update' => [self::ACCESS_AUTH, ProjectContentController::class, 'updateNote'],
             'POST /projects/{id}/notes/{id}/delete' => [self::ACCESS_AUTH, ProjectContentController::class, 'deleteNote'],
             'GET /api/projects/{id}/notes' => [self::ACCESS_AUTH, ProjectContentController::class, 'apiNotes'],
+            'POST /api/projects/{id}/attachments' => [self::ACCESS_AUTH, AttachmentController::class, 'upload'],
+            'POST /api/attachments/{id}/discard' => [self::ACCESS_AUTH, AttachmentController::class, 'discard'],
+            'GET /attachments/{id}/preview' => [self::ACCESS_AUTH, AttachmentController::class, 'preview'],
+            'GET /attachments/{id}/original' => [self::ACCESS_AUTH, AttachmentController::class, 'original'],
+            'GET /attachments/{id}/download' => [self::ACCESS_AUTH, AttachmentController::class, 'download'],
+            'POST /projects/{id}/attachments/{id}/delete' => [self::ACCESS_AUTH, AttachmentController::class, 'delete'],
             'GET /api/projects' => [self::ACCESS_AUTH, ProjectController::class, 'apiList'],
             'GET /api/projects/{id}' => [self::ACCESS_AUTH, ProjectController::class, 'apiShow'],
             'GET /login' => [self::ACCESS_GUEST, AuthController::class, 'showLogin'],
@@ -343,8 +350,11 @@ final class App
             ->withHeader('X-Content-Type-Options', 'nosniff')
             ->withHeader('X-Frame-Options', 'DENY')
             ->withHeader('Referrer-Policy', 'same-origin')
-            ->withHeader('Content-Security-Policy', "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'")
             ->withHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+        if (!isset($response->headers['Content-Security-Policy'])) {
+            // 附件回應有自己更嚴格的 CSP（含 sandbox），不可被一般頁面的設定覆蓋
+            $response->withHeader('Content-Security-Policy', "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
+        }
         if (!isset($response->headers['Cache-Control'])) {
             // 登入後頁面含個人資料，不允許瀏覽器或代理快取
             $response->withHeader('Cache-Control', 'no-store');

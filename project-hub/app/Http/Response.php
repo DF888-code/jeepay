@@ -6,12 +6,23 @@ namespace ProjectHub\Http;
 
 final class Response
 {
+    /** @var (callable(): void)|null 大型檔案以串流輸出，避免整份讀入記憶體 */
+    private $streamer = null;
+
     /** @param array<string, string> $headers */
     public function __construct(
         public string $body = '',
         public int $status = 200,
         public array $headers = []
     ) {
+    }
+
+    /** @param array<string, string> $headers */
+    public static function stream(callable $streamer, array $headers): self
+    {
+        $response = new self('', 200, $headers);
+        $response->streamer = $streamer;
+        return $response;
     }
 
     public static function html(string $body, int $status = 200): self
@@ -43,6 +54,10 @@ final class Response
         http_response_code($this->status);
         foreach ($this->headers as $name => $value) {
             header($name . ': ' . $value);
+        }
+        if ($this->streamer !== null) {
+            ($this->streamer)();
+            return;
         }
         echo $this->body;
     }
