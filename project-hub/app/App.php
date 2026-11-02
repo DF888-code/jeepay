@@ -258,6 +258,7 @@ final class App
         $this->logger = new ActivityLogger($this->db, $request);
         $this->view = new View($this->basePath . '/views', [
             'siteName' => $this->settings->string('system.site_name'),
+            'appVersion' => trim((string)@file_get_contents($this->basePath . '/VERSION')),
             'timezone' => $this->settings->string('system.timezone'),
         ]);
     }

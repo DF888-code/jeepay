@@ -54,6 +54,9 @@ $alertClass = ['success' => 'success', 'warning' => 'warning', 'error' => 'dange
   <?php endforeach; ?>
   <?= $content ?>
 </main>
+<?php if (!empty($appVersion) && $stage === 'full'): ?>
+<footer class="container pb-4 small text-body-secondary">版本 v<?= e($appVersion) ?></footer>
+<?php endif; ?>
 <script src="/assets/vendor/bootstrap-5.3.8/bootstrap.bundle.min.js"></script>
 <?php foreach (($scripts ?? []) as $script): ?>
 <script src="<?= e($script) ?>"></script>

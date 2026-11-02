@@ -10,6 +10,7 @@ DirectoryIndex index.php
     # 隱藏檔與套件管理檔
     RewriteRule (^|/)\. - [R=404,L]
     RewriteRule ^composer\.(json|lock)$ - [R=404,L,NC]
+    RewriteRule ^VERSION$ - [R=404,L,NC]
 
     # 其他不存在的路徑交給前端控制器
     RewriteCond %{REQUEST_FILENAME} !-f

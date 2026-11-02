@@ -8,7 +8,9 @@ declare(strict_types=1);
  *   composer install --no-dev
  *   php tools/build-deploy.php
  *
- * 產出 dist/project-hub-htdocs.zip：在 InfinityFree File Manager 進入 htdocs，用「Upload & Unzip」上傳即可。
+ * 產出 dist/project-hub-htdocs-v{版本}-{日期}.zip（版本取自根目錄 VERSION 檔，日期為台灣時間），
+ * 在 InfinityFree File Manager 進入 htdocs，用「Upload & Unzip」上傳即可。
+ * 檔名帶版本與日期，方便辨識手上的部署包是哪一版；網站頁尾也會顯示同一個版本號。
  *
  * 為什麼把 app/ 等目錄放進 htdocs：主機實測上層目錄不可寫，只能放在網站根目錄內，
  * 因此每個私有目錄都附 .htaccess 拒絕存取，根目錄 .htaccess 也再擋一次。
@@ -21,14 +23,23 @@ if (PHP_SAPI !== 'cli') {
 
 $root = dirname(__DIR__);
 $dist = $root . '/dist';
-$zipPath = $dist . '/project-hub-htdocs.zip';
+$version = trim((string)@file_get_contents($root . '/VERSION'));
+if (!preg_match('/^\d+\.\d+\.\d+$/', $version)) {
+    fwrite(STDERR, "VERSION 檔格式錯誤，應為 x.y.z\n");
+    exit(1);
+}
+$date = (new DateTimeImmutable('now', new DateTimeZone('Asia/Taipei')))->format('Ymd');
+$zipPath = $dist . "/project-hub-htdocs-v{$version}-{$date}.zip";
 
 if (!is_file($root . '/vendor/autoload.php')) {
     fwrite(STDERR, "找不到 vendor/，請先執行 composer install --no-dev\n");
     exit(1);
 }
 @mkdir($dist, 0755, true);
-@unlink($zipPath);
+// 清除舊的部署包，dist/ 中只保留這次產生的版本，避免上傳到舊檔
+foreach (glob($dist . '/project-hub-htdocs*.zip') ?: [] as $old) {
+    @unlink($old);
+}
 
 $zip = new ZipArchive();
 if ($zip->open($zipPath, ZipArchive::CREATE) !== true) {
@@ -67,6 +78,7 @@ $add($root . '/app/.htaccess', 'vendor/.htaccess');
 $add($root . '/config/.htaccess', 'config/.htaccess');
 $add($root . '/config/config.example.php', 'config/config.example.php');
 $add($root . '/storage/.htaccess', 'storage/.htaccess');
+$add($root . '/VERSION', 'VERSION');
 
 $zip->close();
 

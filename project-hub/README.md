@@ -64,7 +64,7 @@ php tests/schema_smoke_test.php
 
 ```bash
 composer install --no-dev
-php tools/build-deploy.php   # 產生 dist/project-hub-htdocs.zip
+php tools/build-deploy.php   # 產生 dist/project-hub-htdocs-v{版本}-{日期}.zip（版本號在 VERSION 檔，紀錄見 CHANGELOG.md）
 ```
 
 上傳與安裝步驟見 [docs/07-deployment.md](docs/07-deployment.md)。

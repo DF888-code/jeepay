@@ -9,7 +9,7 @@
 
 ### 1.2 上傳程式
 
-1. 取得部署包 `project-hub-htdocs.zip`（開發端執行 `composer install --no-dev && php tools/build-deploy.php` 產生於 `dist/`）；
+1. 取得部署包 `project-hub-htdocs-v{版本}-{日期}.zip`（開發端執行 `composer install --no-dev && php tools/build-deploy.php` 產生於 `dist/`；版本號見 `CHANGELOG.md`，登入後網站頁尾也會顯示目前版本）；
 2. File Manager 進入 `htdocs`，使用 **Upload & Unzip** 上傳 zip；
 3. 確認 `htdocs` 底下出現 `index.php`、`.htaccess`、`assets/`、`app/`、`config/`、`database/`、`storage/`、`vendor/`、`views/`。
 
