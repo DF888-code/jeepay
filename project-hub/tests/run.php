@@ -52,6 +52,8 @@ $tmp = __DIR__ . '/tmp';
 $storage = $tmp . '/storage';
 @mkdir($storage, 0700, true);
 @unlink($storage . '/installed.lock');
+$port = 18000 + random_int(0, 999);
+
 // 假外部服務：Google OAuth／Drive、Brevo（HTTP）與 SMTP，讓整合測試不需連網也不需真實帳號
 $fakeDir = $tmp . '/fake';
 if (is_dir($fakeDir)) {
@@ -77,7 +79,7 @@ $fakeBase = "http://127.0.0.1:{$fakePort}";
 $appKey = random_bytes(32);
 $installToken = bin2hex(random_bytes(20));
 file_put_contents($tmp . '/config.php', '<?php return ' . var_export([
-    'base_url' => '',
+    'base_url' => "http://127.0.0.1:{$port}",
     'force_https' => false,
     'app_key' => base64_encode($appKey),
     'install_token' => $installToken,
@@ -96,7 +98,6 @@ file_put_contents($tmp . '/config.php', '<?php return ' . var_export([
 
 
 
-$port = 18000 + random_int(0, 999);
 $server = proc_open(
     [PHP_BINARY, '-S', "127.0.0.1:{$port}", '-t', dirname(__DIR__) . '/public', dirname(__DIR__) . '/public/index.php'],
     [0 => ['pipe', 'r'], 1 => ['file', $tmp . '/server.log', 'w'], 2 => ['file', $tmp . '/server.log', 'a']],
@@ -151,6 +152,8 @@ try {
     $failures += run_registered_tests('整合測試：系統設定中心、寄信、Google Drive（階段 9）');
     require __DIR__ . '/Integration/RecoveryTest.php';
     $failures += run_registered_tests('整合測試：最高權限管理者 Email 救援（階段 10）');
+    require __DIR__ . '/Integration/SecurityTest.php';
+    $failures += run_registered_tests('整合測試：全站安全掃描（階段 12）');
 } finally {
     proc_terminate($server);
     proc_terminate($fakeServer);

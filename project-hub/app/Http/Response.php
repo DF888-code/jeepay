@@ -39,7 +39,8 @@ final class Response
     /** @param array<string, mixed> $data */
     public static function json(array $data, int $status = 200): self
     {
-        $body = json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+        // HEX 選項把 < > & ' " 轉成 \u003C 等：即使回應被誤當 HTML 解析，也不會出現可執行的標籤
+        $body = json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_THROW_ON_ERROR);
         return new self($body, $status, ['Content-Type' => 'application/json; charset=utf-8']);
     }
 
@@ -52,6 +53,8 @@ final class Response
     public function send(): void
     {
         http_response_code($this->status);
+        // 不透露 PHP 版本（expose_php 只能在 php.ini 關閉，免費主機無法修改）
+        header_remove('X-Powered-By');
         foreach ($this->headers as $name => $value) {
             header($name . ': ' . $value);
         }

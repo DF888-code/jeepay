@@ -136,6 +136,9 @@ final class AdminLogController extends AdminController
 
     private static function validDate(string $value): bool
     {
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
+            return false;
+        }
         $d = DateTimeImmutable::createFromFormat('!Y-m-d', $value);
         return $d !== false && $d->format('Y-m-d') === $value;
     }

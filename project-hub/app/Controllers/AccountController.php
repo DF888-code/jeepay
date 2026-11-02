@@ -33,6 +33,7 @@ final class AccountController extends Controller
             'isSuperAdmin' => $isAdmin,
             'recoveryPending' => $isAdmin ? (new RecoveryTokenRepository($this->app->db))->pending((int)$user['id']) : [],
             'mailEnabled' => $isAdmin && $this->app->mailer()->enabled(),
+            'baseUrlSet' => $this->app->hasConfiguredBaseUrl(),
         ]);
     }
 

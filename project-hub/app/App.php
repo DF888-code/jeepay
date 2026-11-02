@@ -362,6 +362,16 @@ final class App
         return is_dir($dir) && is_writable($dir) ? $dir : null;
     }
 
+    /**
+     * config.php 是否設定了 base_url。
+     * 寄出含 Token 的連結（Email 救援）時必須使用設定值：若改用請求的 Host 標頭，
+     * 攻擊者可偽造 Host 讓救援信中的連結指向自己的網站而竊取 Token（Host header poisoning）。
+     */
+    public function hasConfiguredBaseUrl(): bool
+    {
+        return (bool)preg_match('#^https?://[A-Za-z0-9.\-]+(:\d+)?$#', rtrim($this->config->string('base_url'), '/'));
+    }
+
     public function baseUrl(): string
     {
         $configured = rtrim($this->config->string('base_url'), '/');

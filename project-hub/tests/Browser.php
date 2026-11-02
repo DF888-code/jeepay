@@ -51,6 +51,17 @@ final class Browser
         return $this->post($action, $data);
     }
 
+    /**
+     * 帶自訂標頭送出請求（安全測試用，例如偽造 Host、Origin 標頭）。
+     *
+     * @param array<string, mixed>|null $data
+     * @param list<string> $headers
+     */
+    public function send(string $method, string $path, ?array $data, array $headers = []): self
+    {
+        return $this->request($method, $path, $data, $headers);
+    }
+
     public function csrf(): string
     {
         return preg_match('/name="_csrf" value="([a-f0-9]{64})"/', $this->body, $m) ? $m[1] : '';

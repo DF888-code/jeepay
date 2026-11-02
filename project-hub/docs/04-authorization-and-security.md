@@ -178,4 +178,4 @@
 | 12 | 缺少或錯誤的 CSRF Token | 拒絕 |
 | 13 | 帳號停用後使用舊 Session | 立即登出 |
 
-Schema 層級的 1–6、7 已在 `tests/schema_smoke_test.php` 以真實 SQL 驗證；應用層測試將在對應階段補齊。
+Schema 層級的 1–6、7 已在 `tests/schema_smoke_test.php` 以真實 SQL 驗證。**應用層 1–13 已全部自動化**（ProjectTest、ContentTest、AttachmentTest、SearchTest、AuthFlowTest、AdminTest），並由 `SecurityTest` 對完整路由表逐條檢查未登入、越權與 CSRF。結果見 09 文件。

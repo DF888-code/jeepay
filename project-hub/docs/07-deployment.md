@@ -82,7 +82,33 @@ UPDATE users
 | 私有目錄不可瀏覽 | 瀏覽 `/app/`、`/vendor/autoload.php`、`/storage/`、`/database/migrations/0001_initial_schema.sql` | 403 或 404 |
 | 安裝頁已停用 | 瀏覽 `/install` | 404 |
 | HTTP 轉 HTTPS | 瀏覽 `http://你的網域/login` | 轉址到 https |
-| 探針已刪除 | 瀏覽 `/host-check.php` | 404 |
+| 探針已刪除 | 瀏覽 `/host-check.php` | 403 或 404 |
+| `base_url` 正確 | 「帳號設定 → Email 救援設定」沒有 base_url 警告 | 無警告 |
+| 錯誤不外洩 | 瀏覽不存在的網址 | 只顯示「找不到頁面」，沒有路徑或 PHP 錯誤 |
+| 不透露版本 | 瀏覽器開發者工具查看回應標頭 | 沒有 `X-Powered-By` |
+| Cookie 安全 | 開發者工具 → Application → Cookies | `phsid` 有 HttpOnly、Secure、SameSite=Lax |
+| 2FA 強制 | 新建員工帳號第一次登入 | 必須先綁定 Google Authenticator |
+| 寄信可用 | 「系統設定 → 寄信設定」寄送測試信 | 收到測試信 |
+| Email 救援演練 | 用「忘記密碼」流程完整走一次 | 收到救援信、可重設密碼 |
+| 備份 | phpMyAdmin 匯出資料庫 | 取得 .sql 檔並妥善保存 |
+
+### 正式上線（v1.0.0）步驟摘要
+
+1. 以 phpMyAdmin 匯出既有資料庫備份；
+2. 上傳 `project-hub-htdocs-v1.0.0-{日期}.zip` 並解壓覆蓋 htdocs（不會覆蓋 `config/config.php` 與 `storage/`）；
+3. 以最高權限管理者登入，若被導向「資料庫更新」頁就按「套用資料庫更新」；
+4. 確認 `config.php` 的 `base_url` 是 `https://` 開頭的正式網址、`force_https` 為 `true`、`install_token` 已清空；
+5. 完成「寄信設定」與「Email 救援設定」，演練一次救援；
+6. （選用）完成 Google Drive 連結，把新附件改存 Google Drive；
+7. 逐項完成上表檢查，並在「歷史操作紀錄」確認沒有異常。
+
+### 開發環境 Apache 驗證結果（2026-11-02，v1.0.0 部署包）
+
+27 個路徑實測：`/config/config.php`、`/config/config.example.php`、`/app/App.php`、`/vendor/autoload.php`、`/vendor/composer/installed.json`、
+`/database/migrations/0004_settings_center.sql`、`/storage/`、`/storage/installed.lock`、`/storage/sessions/`、`/storage/tmp/`、`/views/layout.php`、`/.htaccess`、
+上傳目錄中的 `.php` 檔、`/index.php/../config/config.php`、`/assets/../config/config.php`、`/app/../config/config.php`：**403**；
+`/VERSION`、`/composer.json`、`/tools/`、`/tests/`、`/docs/`、大小寫變形：**404**；`/%2e%2e/config/config.php`：400；安裝後 `/install`：404。
+安裝 → 登入 → 2FA 綁定流程正常，Session 寫入 `storage/sessions/`，回應沒有 `X-Powered-By`。
 
 ### 開發環境 Apache 驗證結果（2026-10-30）
 

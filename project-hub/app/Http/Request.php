@@ -40,7 +40,7 @@ final class Request
     public function input(string $key, string $default = ''): string
     {
         $v = $this->post[$key] ?? $default;
-        return is_string($v) ? $v : $default;
+        return is_string($v) ? self::clean($v) : $default;
     }
 
     /** @return list<string> 陣列型輸入（例如 attachment_ids[]）；非字串元素一律忽略 */
@@ -63,7 +63,16 @@ final class Request
     public function query(string $key, string $default = ''): string
     {
         $v = $this->query[$key] ?? $default;
-        return is_string($v) ? $v : $default;
+        return is_string($v) ? self::clean($v) : $default;
+    }
+
+    /**
+     * 移除 NUL 字元：許多 PHP 函式（日期解析、檔案路徑）遇到 NUL 會丟出例外或截斷字串，
+     * 正常的表單與網址參數不會含有 NUL，直接移除最安全。
+     */
+    private static function clean(string $v): string
+    {
+        return str_contains($v, "\0") ? str_replace("\0", '', $v) : $v;
     }
 
     public function header(string $name): string

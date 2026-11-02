@@ -72,6 +72,8 @@ final class RecoveryController extends Controller
             $this->logSecurity('recovery.request', Log::RESULT_DENIED, (int)$user['id'], (string)$user['username'], "{$label}：申請次數超過上限，未寄信");
         } elseif ((string)($user['email'] ?? '') === '' || !$this->app->mailer()->enabled()) {
             $this->logSecurity('recovery.request', Log::RESULT_FAILURE, (int)$user['id'], (string)$user['username'], "{$label}：未設定救援 Email 或寄信方式，無法寄信");
+        } elseif (!$this->app->hasConfiguredBaseUrl()) {
+            $this->logSecurity('recovery.request', Log::RESULT_FAILURE, (int)$user['id'], (string)$user['username'], "{$label}：config.php 未設定 base_url，為避免連結被竄改而不寄信");
         } elseif ($purpose === 'reset_password' && (int)$user['totp_enabled'] !== 1) {
             // 沒有驗證器時無法用「忘記密碼」完成，直接告知會讓帳號被探測；只記錄
             $this->logSecurity('recovery.request', Log::RESULT_FAILURE, (int)$user['id'], (string)$user['username'], "{$label}：帳號尚未綁定驗證器，請改選「密碼與驗證器都遺失」");

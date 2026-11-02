@@ -6,7 +6,8 @@
  * 若尚未建立 config.php，直接開啟網站會顯示設定說明頁，並提供可複製的隨機 app_key 與 install_token。
  */
 return [
-    // 網站網址（寄送信件與 HTTPS 轉址使用），結尾不加斜線
+    // 網站網址（寄送信件與 HTTPS 轉址使用），結尾不加斜線。
+    // 必須正確設定：救援信的連結只使用此值，未設定時為了防止 Host 標頭偽造而不寄救援信
     'base_url' => 'https://book888.free.je',
 
     // 正式環境務必為 true：所有 http 請求會轉址到 https
