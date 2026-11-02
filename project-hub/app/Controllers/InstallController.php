@@ -110,7 +110,7 @@ final class InstallController extends Controller
     /** 設定檔不存在或不完整時顯示的說明頁（僅在尚未安裝時出現）。 */
     public static function configHelp(App $app, ?Config $config): Response
     {
-        $view = new View($app->basePath . '/views', ['siteName' => 'Project Hub', 'csrf' => '', 'flash' => [], 'currentUser' => null, 'authStage' => 'none']);
+        $view = new View($app->basePath . '/views', ['siteName' => '專案管理平台', 'csrf' => '', 'flash' => [], 'currentUser' => null, 'authStage' => 'none']);
         return Response::html($view->render('install/config_help', [
             'title' => '尚未完成設定',
             'problems' => $config === null ? ['找不到 config/config.php'] : $config->problems(),

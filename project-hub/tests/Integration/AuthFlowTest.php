@@ -112,9 +112,13 @@ test('安裝：成功建立資料表與最高權限管理者，並要求綁定 2
     assert_same('/login', $b->location(), '安裝完成應導向登入頁');
     $row = ctx()['pdo']->query("SELECT is_super_admin, must_enroll_2fa, totp_enabled FROM users WHERE username = 'admin'")->fetch(PDO::FETCH_ASSOC);
     assert_same(['is_super_admin' => 1, 'must_enroll_2fa' => 1, 'totp_enabled' => 0], array_map('intval', $row));
+    $migrations = ctx()['pdo']->query('SELECT version FROM schema_migrations ORDER BY version')->fetchAll(PDO::FETCH_COLUMN);
+    assert_same(['0001_initial_schema', '0002_user_must_change_password'], $migrations, '安裝時應套用全部遷移');
     assert_true(is_file(ctx()['storage'] . '/installed.lock'), '應建立 installed.lock');
     // 放寬 IP 失敗上限，避免本測試的大量失敗嘗試互相影響；IP 鎖定另於最後測試
     ctx()['pdo']->exec("INSERT INTO system_settings (setting_key, value_json, updated_at) VALUES ('security.login_ip_max_failures', '200', NOW())");
+    // 本檔測試多裝置同時登入的行為（例如改密碼讓其他裝置失效），先關閉單一裝置登入；該設定另於 AdminTest 驗證
+    ctx()['pdo']->exec("INSERT INTO system_settings (setting_key, value_json, updated_at) VALUES ('security.single_session', '0', NOW())");
 });
 
 test('安裝完成後安裝頁永久停用（GET 與 POST 都回 404）', function (): void {

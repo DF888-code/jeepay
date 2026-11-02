@@ -127,6 +127,52 @@ final class AccountController extends Controller
         return $this->back('/account', 'success', '已更換 2FA 驗證器，舊驗證器已失效，其他裝置的登入狀態也已失效。');
     }
 
+    /** 立即登出此帳號在其他裝置與瀏覽器的登入狀態，本裝置保持登入。 */
+    public function revokeOtherSessions(Request $request): Response
+    {
+        $id = (int)$this->app->auth->userId();
+        $this->app->auth->adoptAuthVersion($this->app->users->bumpAuthVersion($id));
+        $this->app->logger->log('account', 'sessions.revoke_others', Log::RESULT_SUCCESS, $id, $this->app->auth->label());
+        return $this->back('/account', 'success', '已登出其他所有裝置。');
+    }
+
+    /** 管理者建立帳號或重設密碼後，本人必須先把臨時密碼換成自己的密碼。 */
+    public function showRequiredPassword(Request $request): Response
+    {
+        return $this->render('account/password_required', [
+            'title' => '請變更密碼',
+            'minLength' => $this->app->settings->int('security.password_min_length'),
+        ]);
+    }
+
+    public function changeRequiredPassword(Request $request): Response
+    {
+        $user = (array)$this->app->auth->user();
+        $id = (int)$user['id'];
+        $label = (string)$user['username'];
+        $key = $this->app->throttle->accountKey($label);
+        if ($this->app->throttle->isLocked($key, $request->ip())) {
+            return $this->back('/account/password-required', 'error', '嘗試次數過多，請稍後再試。');
+        }
+        $current = $request->input('current_password');
+        if (!Passwords::verify($current, (string)$user['password_hash'])) {
+            $this->app->throttle->record($key, $request->ip(), LoginThrottle::STAGE_REAUTH, false);
+            return $this->back('/account/password-required', 'error', '臨時密碼錯誤。');
+        }
+        $new = $request->input('new_password');
+        $error = Passwords::policyError($new, $request->input('new_password_confirm'), $this->app->settings->int('security.password_min_length'));
+        if ($error === null && hash_equals($current, $new)) {
+            $error = '新密碼不可與臨時密碼相同。';
+        }
+        if ($error !== null) {
+            return $this->back('/account/password-required', 'error', $error);
+        }
+        $this->app->users->completeRequiredPasswordChange($id, Passwords::hash($new));
+        $this->app->auth->adoptAuthVersion((int)$this->app->users->find($id)['auth_version']);
+        $this->app->logger->log('account', 'password.change', Log::RESULT_SUCCESS, $id, $label, '變更管理者提供的臨時密碼');
+        return $this->back('/', 'success', '密碼已變更，歡迎使用。');
+    }
+
     public function apiMe(Request $request): Response
     {
         $user = (array)$this->app->auth->user();

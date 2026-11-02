@@ -12,6 +12,7 @@ use ProjectHub\Support\Clock;
  * 目前請求的登入狀態。
  *
  * 狀態機：none → totp（已過密碼、待驗證碼）或 enroll（已過密碼、必須綁定 2FA）→ full（完整登入）。
+ * 完整登入但帳號被標記為必須變更密碼時，視為 password_change，只能進入變更密碼頁。
  * 每個請求都重新從資料庫讀取使用者，帳號停用、auth_version 改變（改密碼、重設 2FA）時立即失效。
  */
 final class AuthState
@@ -20,6 +21,8 @@ final class AuthState
     public const TOTP = 'totp';
     public const ENROLL = 'enroll';
     public const FULL = 'full';
+    /** 已通過密碼與 2FA，但必須先變更管理者給的臨時密碼，才能使用一般功能 */
+    public const PASSWORD_CHANGE = 'password_change';
 
     /** @var array<string, mixed>|null */
     private ?array $user = null;
@@ -66,6 +69,11 @@ final class AuthState
         if ($stage === self::TOTP && ((int)$user['must_enroll_2fa'] === 1 || (int)$user['totp_enabled'] !== 1)) {
             $stage = self::ENROLL;
             $this->session->set('stage', $stage);
+        }
+
+        // 欄位在遷移 0002 才加入；尚未套用遷移時視為不需變更
+        if ($stage === self::FULL && (int)($user['must_change_password'] ?? 0) === 1) {
+            $stage = self::PASSWORD_CHANGE;
         }
 
         $this->user = $user;

@@ -9,8 +9,10 @@ use ProjectHub\Auth\AuthState;
 use ProjectHub\Auth\LoginThrottle;
 use ProjectHub\Auth\UserRepository;
 use ProjectHub\Controllers\AccountController;
+use ProjectHub\Controllers\AdminUserController;
 use ProjectHub\Controllers\AuthController;
 use ProjectHub\Controllers\HomeController;
+use ProjectHub\Database\Migrator;
 use ProjectHub\Controllers\InstallController;
 use ProjectHub\Http\Request;
 use ProjectHub\Http\Response;
@@ -34,6 +36,8 @@ final class App
     public const ACCESS_SESSION = 'session';  // 任何已過密碼的狀態（登出）
     public const ACCESS_AUTH = 'auth';        // 完整登入（密碼 + 2FA）
     public const ACCESS_INSTALL = 'install';  // 安裝流程，自行檢查
+    public const ACCESS_ADMIN = 'admin';      // 完整登入且為最高權限管理者（管理後台）
+    public const ACCESS_PASSWORD_CHANGE = 'password_change'; // 必須先變更臨時密碼
 
     public Config $config;
     public Database $db;
@@ -51,7 +55,11 @@ final class App
     {
     }
 
-    /** @return array<string, array{0:string,1:string,2:string}> 「方法 路徑」→ [存取等級, 控制器, 方法] */
+    /**
+     * 「方法 路徑」→ [存取等級, 控制器, 方法]。路徑中的 {id} 只匹配正整數，並以 int 傳給控制器。
+     *
+     * @return array<string, array{0:string,1:string,2:string}>
+     */
     private static function routes(): array
     {
         return [
@@ -69,6 +77,21 @@ final class App
             'GET /account/2fa/change' => [self::ACCESS_AUTH, AccountController::class, 'showTotpChange'],
             'POST /account/2fa/confirm' => [self::ACCESS_AUTH, AccountController::class, 'confirmTotpChange'],
             'GET /api/me' => [self::ACCESS_AUTH, AccountController::class, 'apiMe'],
+            'POST /account/sessions/revoke-others' => [self::ACCESS_AUTH, AccountController::class, 'revokeOtherSessions'],
+            'GET /account/password-required' => [self::ACCESS_PASSWORD_CHANGE, AccountController::class, 'showRequiredPassword'],
+            'POST /account/password-required' => [self::ACCESS_PASSWORD_CHANGE, AccountController::class, 'changeRequiredPassword'],
+            'GET /admin' => [self::ACCESS_ADMIN, AdminUserController::class, 'home'],
+            'GET /admin/users' => [self::ACCESS_ADMIN, AdminUserController::class, 'index'],
+            'POST /admin/users' => [self::ACCESS_ADMIN, AdminUserController::class, 'create'],
+            'POST /admin/users/{id}/profile' => [self::ACCESS_ADMIN, AdminUserController::class, 'updateProfile'],
+            'POST /admin/users/{id}/status' => [self::ACCESS_ADMIN, AdminUserController::class, 'updateStatus'],
+            'POST /admin/users/{id}/reset-2fa' => [self::ACCESS_ADMIN, AdminUserController::class, 'resetTotp'],
+            'POST /admin/users/{id}/reset-password' => [self::ACCESS_ADMIN, AdminUserController::class, 'resetPassword'],
+            'POST /admin/reauth' => [self::ACCESS_ADMIN, AdminUserController::class, 'reauth'],
+            'GET /admin/migrate' => [self::ACCESS_ADMIN, AdminUserController::class, 'showMigrations'],
+            'POST /admin/migrate' => [self::ACCESS_ADMIN, AdminUserController::class, 'migrate'],
+            'GET /admin/permissions' => [self::ACCESS_ADMIN, AdminUserController::class, 'permissions'],
+            'POST /admin/permissions/{id}' => [self::ACCESS_ADMIN, AdminUserController::class, 'savePermissions'],
             'GET /install' => [self::ACCESS_INSTALL, InstallController::class, 'show'],
             'POST /install' => [self::ACCESS_INSTALL, InstallController::class, 'install'],
         ];
@@ -118,12 +141,11 @@ final class App
             $this->settings->int('security.session_absolute_hours') * 3600
         );
 
-        $route = self::routes()[$request->method . ' ' . $request->path]
-            ?? ($request->method === 'HEAD' ? (self::routes()['GET ' . $request->path] ?? null) : null);
-        if ($route === null) {
+        $matched = self::matchRoute($request->method === 'HEAD' ? 'GET' : $request->method, $request->path);
+        if ($matched === null) {
             return $this->notFound($request);
         }
-        [$access, $controller, $action] = $route;
+        [[$access, $controller, $action], $params] = $matched;
 
         if (!$installed && $access !== self::ACCESS_INSTALL) {
             return Response::redirect('/install');
@@ -136,6 +158,11 @@ final class App
             $gate = $this->gate($access, $request);
             if ($gate !== null) {
                 return $gate;
+            }
+            // 部署新版本後，管理後台必須先套用資料庫更新，避免新功能讀寫尚不存在的欄位
+            if ($access === self::ACCESS_ADMIN && !str_starts_with($request->path, '/admin/migrate')
+                && (new Migrator($this->db, $this->basePath . '/database/migrations'))->pending() !== []) {
+                return Response::redirect('/admin/migrate');
             }
         }
 
@@ -153,32 +180,67 @@ final class App
         $this->view->share('currentUser', $installed ? $this->auth->user() : null);
         $this->view->share('authStage', $installed ? $this->auth->stage() : AuthState::NONE);
 
-        return (new $controller($this))->{$action}($request);
+        return (new $controller($this))->{$action}($request, ...$params);
+    }
+
+    /**
+     * @return array{0: array{0:string,1:string,2:string}, 1: list<int>}|null
+     */
+    private static function matchRoute(string $method, string $path): ?array
+    {
+        $routes = self::routes();
+        if (isset($routes[$method . ' ' . $path])) {
+            return [$routes[$method . ' ' . $path], []];
+        }
+        foreach ($routes as $key => $route) {
+            if (!str_contains($key, '{id}')) {
+                continue;
+            }
+            // 只接受 1–9 位數的正整數，避免超大數字或非數字輸入進入查詢
+            $pattern = '#^' . str_replace('\\{id\\}', '([1-9][0-9]{0,8})', preg_quote($key, '#')) . '$#';
+            if (preg_match($pattern, $method . ' ' . $path, $m)) {
+                return [$route, array_map('intval', array_slice($m, 1))];
+            }
+        }
+        return null;
     }
 
     /** 依登入狀態決定能否進入路由；不符合時導向正確的步驟。 */
     private function gate(string $access, Request $request): ?Response
     {
         $stage = $this->auth->stage();
+        if ($access === self::ACCESS_ADMIN && $stage === AuthState::FULL) {
+            if ((int)($this->auth->user()['is_super_admin'] ?? 0) === 1) {
+                return null;
+            }
+            // 非管理者一律回 404，不透露管理後台的存在；但留下權限拒絕紀錄
+            $this->logger->log('admin', 'admin.access', ActivityLogger::RESULT_DENIED, $this->auth->userId(), $this->auth->label(), $request->method . ' ' . $request->path);
+            return $this->notFound($request);
+        }
         $allowed = match ($access) {
             self::ACCESS_GUEST => $stage === AuthState::NONE,
             self::ACCESS_TOTP => $stage === AuthState::TOTP,
             self::ACCESS_ENROLL => $stage === AuthState::ENROLL,
             self::ACCESS_SESSION => $stage !== AuthState::NONE,
+            self::ACCESS_PASSWORD_CHANGE => $stage === AuthState::PASSWORD_CHANGE,
             self::ACCESS_AUTH => $stage === AuthState::FULL,
+            self::ACCESS_ADMIN => false,
             default => false,
         };
         if ($allowed) {
             return null;
         }
         if ($request->wantsJson()) {
-            return $stage === AuthState::ENROLL
-                ? Response::json(['error' => '需要先完成 2FA 綁定'], 403)
-                : Response::json(['error' => '需要登入'], 401);
+            return match ($stage) {
+                AuthState::ENROLL => Response::json(['error' => '需要先完成 2FA 綁定'], 403),
+                AuthState::PASSWORD_CHANGE => Response::json(['error' => '需要先變更密碼'], 403),
+                default => Response::json(['error' => '需要登入'], 401),
+            };
         }
         return Response::redirect(match ($stage) {
             AuthState::TOTP => '/login/totp',
             AuthState::ENROLL => '/2fa/setup',
+            AuthState::PASSWORD_CHANGE => '/account/password-required',
             AuthState::FULL => '/',
             default => '/login',
         });

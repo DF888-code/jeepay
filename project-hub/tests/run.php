@@ -92,6 +92,8 @@ $GLOBALS['PH_CTX'] = [
 try {
     require __DIR__ . '/Integration/AuthFlowTest.php';
     $failures += run_registered_tests('整合測試：登入、2FA 與帳號設定');
+    require __DIR__ . '/Integration/AdminTest.php';
+    $failures += run_registered_tests('整合測試：管理後台與全域權限（階段 4）');
 } finally {
     proc_terminate($server);
     @unlink($tmp . '/config.php');

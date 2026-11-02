@@ -41,16 +41,81 @@ final class UserRepository
         return (int)$this->db->value('SELECT COUNT(*) FROM users');
     }
 
-    public function create(string $username, string $displayName, ?string $email, string $passwordHash, bool $superAdmin, ?int $createdBy): int
+    public function create(string $username, string $displayName, ?string $email, string $passwordHash, bool $superAdmin, ?int $createdBy, bool $mustChangePassword = false): int
     {
         $now = Clock::utc();
         $this->db->run(
             'INSERT INTO users (username, username_norm, display_name, email, password_hash, is_super_admin,
-                                must_enroll_2fa, created_at, created_by, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?)',
-            [$username, self::normalizeUsername($username), $displayName, $email, $passwordHash, $superAdmin ? 1 : 0, $now, $createdBy, $now]
+                                must_enroll_2fa, must_change_password, created_at, created_by, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)',
+            [$username, self::normalizeUsername($username), $displayName, $email, $passwordHash, $superAdmin ? 1 : 0,
+             $mustChangePassword ? 1 : 0, $now, $createdBy, $now]
         );
         return (int)$this->db->pdo()->lastInsertId();
+    }
+
+    /**
+     * 管理後台可管理的使用者：不含最高權限管理者（其帳號只能由本人在帳號設定與救援流程處理）。
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function listManageable(): array
+    {
+        return $this->db->all(
+            'SELECT u.id, u.username, u.display_name, u.email, u.status, u.totp_enabled, u.must_enroll_2fa,
+                    u.last_login_at, u.created_at,
+                    g.can_view_projects, g.can_edit_projects, g.can_create_projects, g.can_delete_projects,
+                    COALESCE(g.row_version, 0) AS row_version
+               FROM users u
+          LEFT JOIN user_global_permissions g ON g.user_id = u.id
+              WHERE u.is_super_admin = 0
+           ORDER BY u.status = \'active\' DESC, u.display_name, u.id'
+        );
+    }
+
+    /** @return array<string, mixed>|null 只回傳可被管理後台操作的使用者 */
+    public function findManageable(int $id): ?array
+    {
+        return $this->db->one('SELECT * FROM users WHERE id = ? AND is_super_admin = 0', [$id]);
+    }
+
+    public function updateProfile(int $id, string $displayName, ?string $email): void
+    {
+        $this->db->run('UPDATE users SET display_name = ?, email = ?, updated_at = ? WHERE id = ?', [$displayName, $email, Clock::utc(), $id]);
+    }
+
+    /** 停用時同時讓所有 Session 失效（雖然每個請求都會檢查 status，仍以版本號再保險一次）。 */
+    public function setStatus(int $id, string $status): void
+    {
+        $this->db->run(
+            'UPDATE users SET status = ?, auth_version = auth_version + 1, updated_at = ? WHERE id = ?',
+            [$status, Clock::utc(), $id]
+        );
+    }
+
+    /** 管理者重設密碼：設定臨時密碼、要求下次登入變更，並登出所有裝置。 */
+    public function setTemporaryPassword(int $id, string $hash): void
+    {
+        $this->db->run(
+            'UPDATE users SET password_hash = ?, must_change_password = 1, auth_version = auth_version + 1, updated_at = ? WHERE id = ?',
+            [$hash, Clock::utc(), $id]
+        );
+    }
+
+    /** 本人完成強制變更密碼。 */
+    public function completeRequiredPasswordChange(int $id, string $hash): void
+    {
+        $this->db->run(
+            'UPDATE users SET password_hash = ?, must_change_password = 0, auth_version = auth_version + 1, updated_at = ? WHERE id = ?',
+            [$hash, Clock::utc(), $id]
+        );
+    }
+
+    /** 讓此使用者的所有 Session 失效（單一裝置登入、登出其他裝置時使用）。 */
+    public function bumpAuthVersion(int $id): int
+    {
+        $this->db->run('UPDATE users SET auth_version = auth_version + 1 WHERE id = ?', [$id]);
+        return (int)$this->db->value('SELECT auth_version FROM users WHERE id = ?', [$id]);
     }
 
     /**

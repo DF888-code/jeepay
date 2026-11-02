@@ -31,6 +31,18 @@ final class Migrator
         }
     }
 
+    /** @return list<string> 尚未套用的版本 */
+    public function pending(): array
+    {
+        $applied = $this->applied();
+        $files = glob($this->dir . '/*.sql') ?: [];
+        sort($files, SORT_STRING);
+        return array_values(array_filter(
+            array_map(static fn(string $f): string => basename($f, '.sql'), $files),
+            static fn(string $v): bool => !in_array($v, $applied, true)
+        ));
+    }
+
     /** @return list<string> 本次套用的版本 */
     public function migrate(): array
     {

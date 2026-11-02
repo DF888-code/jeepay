@@ -1,6 +1,6 @@
 <?php
 /** @var string $content */
-$siteName = $siteName ?? 'Project Hub';
+$siteName = $siteName ?? '專案管理平台';
 $pageTitle = isset($title) && $title !== '' ? $title . ' · ' . $siteName : $siteName;
 $stage = $authStage ?? 'none';
 // 樣板的訊息類型對應 Bootstrap 的 alert 顏色
@@ -28,6 +28,9 @@ $alertClass = ['success' => 'success', 'warning' => 'warning', 'error' => 'dange
         <ul class="navbar-nav me-auto">
           <li class="nav-item"><a class="nav-link" href="/">專案</a></li>
           <li class="nav-item"><a class="nav-link" href="/account">帳號設定</a></li>
+          <?php if ((int)($currentUser['is_super_admin'] ?? 0) === 1): ?>
+            <li class="nav-item"><a class="nav-link" href="/admin">管理後台</a></li>
+          <?php endif; ?>
         </ul>
         <div class="d-flex align-items-center gap-3">
           <span class="navbar-text small"><?= e($currentUser['display_name']) ?></span>
@@ -37,7 +40,7 @@ $alertClass = ['success' => 'success', 'warning' => 'warning', 'error' => 'dange
           </form>
         </div>
       </div>
-    <?php elseif ($stage === 'totp' || $stage === 'enroll'): ?>
+    <?php elseif (in_array($stage, ['totp', 'enroll', 'password_change'], true)): ?>
       <form method="post" action="/logout" class="m-0">
         <input type="hidden" name="_csrf" value="<?= e($csrf ?? '') ?>">
         <button type="submit" class="btn btn-outline-secondary btn-sm">取消登入</button>
@@ -52,5 +55,8 @@ $alertClass = ['success' => 'success', 'warning' => 'warning', 'error' => 'dange
   <?= $content ?>
 </main>
 <script src="/assets/vendor/bootstrap-5.3.8/bootstrap.bundle.min.js"></script>
+<?php foreach (($scripts ?? []) as $script): ?>
+<script src="<?= e($script) ?>"></script>
+<?php endforeach; ?>
 </body>
 </html>

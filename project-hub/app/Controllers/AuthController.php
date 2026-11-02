@@ -92,8 +92,7 @@ final class AuthController extends Controller
 
         $this->app->throttle->record($key, $request->ip(), LoginThrottle::STAGE_TOTP, true);
         $this->app->users->touchLogin($id);
-        $this->app->auth->complete((int)$user['auth_version']);
-        $this->app->logger->log('auth', 'login.success', Log::RESULT_SUCCESS, $id, (string)$user['username']);
+        $this->completeLogin($id, (string)$user['username'], (int)$user['auth_version']);
         return Response::redirect('/');
     }
 
@@ -129,11 +128,27 @@ final class AuthController extends Controller
 
         $this->app->throttle->record($key, $request->ip(), LoginThrottle::STAGE_TOTP, true);
         $this->app->users->touchLogin($id);
+        $this->app->logger->log('auth', '2fa.enroll', Log::RESULT_SUCCESS, $id, (string)$user['username']);
+        // 綁定時 auth_version 已遞增（其他 Session 已失效），因此直接沿用新版本號
         $fresh = (array)$this->app->users->find($id);
         $this->app->auth->complete((int)$fresh['auth_version']);
-        $this->app->logger->log('auth', '2fa.enroll', Log::RESULT_SUCCESS, $id, (string)$user['username']);
         $this->app->logger->log('auth', 'login.success', Log::RESULT_SUCCESS, $id, (string)$user['username'], '完成 2FA 綁定後登入');
         return $this->back('/', 'success', '兩步驟驗證設定完成。');
+    }
+
+    /**
+     * 完成登入。開啟「單一裝置登入」時，先讓此帳號在其他裝置的 Session 全部失效，
+     * 再以新的版本號建立本裝置的登入狀態。
+     */
+    private function completeLogin(int $id, string $username, int $authVersion): void
+    {
+        $detail = null;
+        if ($this->app->settings->bool('security.single_session')) {
+            $authVersion = $this->app->users->bumpAuthVersion($id);
+            $detail = '單一裝置登入：其他裝置已登出';
+        }
+        $this->app->auth->complete($authVersion);
+        $this->app->logger->log('auth', 'login.success', Log::RESULT_SUCCESS, $id, $username, $detail);
     }
 
     public function logout(Request $request): Response

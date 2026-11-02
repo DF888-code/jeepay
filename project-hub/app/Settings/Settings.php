@@ -43,6 +43,11 @@ final class Settings
         return (int)$this->get($key);
     }
 
+    public function bool(string $key): bool
+    {
+        return (bool)$this->get($key);
+    }
+
     public function string(string $key): string
     {
         return (string)$this->get($key);
@@ -72,6 +77,11 @@ final class Settings
                     return null;
                 }
                 return $value;
+            case 'bool':
+                if (is_bool($value)) {
+                    return $value;
+                }
+                return in_array($value, [0, 1, '0', '1'], true) ? (bool)(int)$value : null;
             case 'timezone':
                 return is_string($value) && in_array($value, \DateTimeZone::listIdentifiers(), true) ? $value : null;
             default:

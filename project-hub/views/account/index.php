@@ -66,5 +66,16 @@
         </form>
       </div>
     </section>
+
+    <section class="card shadow-sm mt-4">
+      <div class="card-header fw-semibold">登入裝置</div>
+      <div class="card-body">
+        <p class="small text-body-secondary">懷疑帳號在其他電腦或手機上仍保持登入（例如公用電腦忘記登出）時，可立即登出其他所有裝置，本裝置保持登入。</p>
+        <form method="post" action="/account/sessions/revoke-others" class="m-0">
+          <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+          <button type="submit" class="btn btn-outline-danger">登出其他所有裝置</button>
+        </form>
+      </div>
+    </section>
   </div>
 </div>

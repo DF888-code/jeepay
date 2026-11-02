@@ -37,6 +37,20 @@ final class Passwords
         return password_verify($password, $hash);
     }
 
+    /**
+     * 管理者建立帳號或重設密碼時使用的臨時密碼。
+     * 排除容易看錯的字元（0／O、1／l／I），方便口頭或紙本轉交；對方第一次登入後必須變更。
+     */
+    public static function temporary(int $length = 14): string
+    {
+        $alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+        $out = '';
+        for ($i = 0; $i < $length; $i++) {
+            $out .= $alphabet[random_int(0, strlen($alphabet) - 1)];
+        }
+        return $out;
+    }
+
     /** 回傳錯誤訊息；符合規則回傳 null。 */
     public static function policyError(string $password, string $confirm, int $minLength): ?string
     {

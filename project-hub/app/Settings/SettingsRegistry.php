@@ -17,7 +17,7 @@ final class SettingsRegistry
     {
         return [
             'system.site_name' => [
-                'category' => 'system', 'label' => '網站名稱', 'type' => 'string', 'default' => 'Project Hub',
+                'category' => 'system', 'label' => '網站名稱', 'type' => 'string', 'default' => '專案管理平台',
                 'max' => 50,
             ],
             'system.timezone' => [
@@ -51,6 +51,10 @@ final class SettingsRegistry
             'security.session_absolute_hours' => [
                 'category' => 'security', 'label' => '登入最長有效時間（小時）', 'type' => 'int', 'default' => 12,
                 'min' => 1, 'max' => 168,
+            ],
+            'security.single_session' => [
+                'category' => 'security', 'label' => '單一裝置登入', 'type' => 'bool', 'default' => true,
+                'help' => '開啟時，在新裝置或新瀏覽器完成登入後，同一帳號在其他裝置的登入狀態會立即失效。',
             ],
             'security.password_min_length' => [
                 'category' => 'security', 'label' => '密碼最短長度', 'type' => 'int', 'default' => 10,
