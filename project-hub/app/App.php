@@ -90,6 +90,7 @@ final class App
             'POST /projects/{id}/keywords/{id}/delete' => [self::ACCESS_AUTH, ProjectContentController::class, 'deleteKeyword'],
             'POST /api/projects/{id}/keywords' => [self::ACCESS_AUTH, ProjectContentController::class, 'apiAddKeyword'],
             'POST /api/projects/{id}/keywords/{id}/delete' => [self::ACCESS_AUTH, ProjectContentController::class, 'apiDeleteKeyword'],
+            'GET /projects/{id}/notes/history' => [self::ACCESS_AUTH, ProjectContentController::class, 'noteHistory'],
             'POST /projects/{id}/notes' => [self::ACCESS_AUTH, ProjectContentController::class, 'createNote'],
             'POST /projects/{id}/notes/{id}/update' => [self::ACCESS_AUTH, ProjectContentController::class, 'updateNote'],
             'POST /projects/{id}/notes/{id}/delete' => [self::ACCESS_AUTH, ProjectContentController::class, 'deleteNote'],

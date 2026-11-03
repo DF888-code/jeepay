@@ -213,6 +213,38 @@ final class ProjectContentController extends ProjectBaseController
         return $this->back("/projects/{$id}#notes", 'success', '隨手記已刪除。');
     }
 
+    /**
+     * 隨手記修改／刪除紀錄：可查看專案的人都能看（與專案說明的版本歷史相同）。
+     * 可用 ?note=ID 只看單一隨手記；以 ?before=紀錄ID 往前分頁。
+     */
+    public function noteHistory(Request $request, int $id): Response
+    {
+        if (!$this->authorizer()->can($this->uid(), Authorizer::VIEW, $id)) {
+            return $this->deny('note.history.view', $id);
+        }
+        $project = (array)$this->projects()->find($id);
+        $noteParam = $request->query('note');
+        $note = null;
+        if (ctype_digit($noteParam) && strlen($noteParam) <= 18) {
+            $note = $this->notes()->findAny($id, (int)$noteParam);
+            if ($note === null) {
+                // 其他專案的隨手記編號：與找不到相同
+                return $this->deny('note.history.view', $id);
+            }
+        }
+        $before = $request->query('before');
+        $page = $this->notes()->revisions($id, $note === null ? null : (int)$note['id'], ctype_digit($before) && strlen($before) <= 18 ? (int)$before : null, 30);
+        $this->app->logger->log('project', 'note.history.view', Log::RESULT_SUCCESS, $this->uid(), $this->app->auth->label(),
+            $note === null ? null : "隨手記 #{$note['id']}", $id, (string)$project['name']);
+        return $this->render('projects/note_history', [
+            'title' => '隨手記修改紀錄：' . $project['name'],
+            'project' => $project,
+            'note' => $note,
+            'revisions' => $page['items'],
+            'next' => $page['next'],
+        ]);
+    }
+
     /** JSON API：與頁面套用相同的雙重授權。 */
     public function apiNotes(Request $request, int $id): Response
     {

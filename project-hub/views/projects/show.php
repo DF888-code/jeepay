@@ -84,7 +84,10 @@
 </section>
 
 <section class="card shadow-sm" id="notes">
-  <div class="card-header fw-semibold">隨手記</div>
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span class="fw-semibold">隨手記</span>
+    <a class="small" href="/projects/<?= (int)$project['id'] ?>/notes/history">修改與刪除紀錄</a>
+  </div>
   <div class="card-body">
     <?php if ($can['edit'] && !$olderPage): ?>
       <form method="post" action="/projects/<?= (int)$project['id'] ?>/notes" class="mb-4" data-uploader data-upload-url="/api/projects/<?= (int)$project['id'] ?>/attachments">
@@ -107,7 +110,7 @@
           <article class="border rounded p-3" id="note-<?= $nid ?>">
             <header class="d-flex flex-wrap justify-content-between gap-2 small text-body-secondary mb-2">
               <span><strong class="text-body"><?= e($n['author_name']) ?></strong> · <?= e(Clock::display($n['created_at'], $timezone)) ?>
-                <?php if ($n['updated_at'] !== null): ?>（<?= e($n['editor_name'] ?? '') ?> 於 <?= e(Clock::display($n['updated_at'], $timezone)) ?> 修改）<?php endif; ?>
+                <?php if ($n['updated_at'] !== null): ?>（<?= e($n['editor_name'] ?? '') ?> 於 <?= e(Clock::display($n['updated_at'], $timezone)) ?> 修改，<a href="/projects/<?= (int)$project['id'] ?>/notes/history?note=<?= $nid ?>">查看修改紀錄</a>）<?php endif; ?>
               </span>
               <span class="d-flex gap-2">
                 <?php if ($n['can_edit']): ?>

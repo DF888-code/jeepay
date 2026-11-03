@@ -33,6 +33,7 @@ final class ActivityLabels
         'project.delete' => '刪除專案',
         'project.restore' => '還原專案',
         'project.history.view' => '查看版本歷史',
+        'note.history.view' => '查看隨手記修改紀錄',
         'project.description.update' => '編輯專案說明',
         'keyword.add' => '新增關鍵字',
         'keyword.delete' => '移除關鍵字',

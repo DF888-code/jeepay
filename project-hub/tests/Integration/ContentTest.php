@@ -134,6 +134,43 @@ test('關鍵字局部更新 API：回傳最新清單；重複提醒、輸入錯�
     assert_true((int)ctx()['pdo']->query("SELECT COUNT(*) FROM activity_logs WHERE action = 'keyword.delete' AND detail LIKE '%局部<更新>%'")->fetchColumn() === 1, '與表單相同會寫入紀錄');
 });
 
+test('隨手記修改紀錄：保存修改前後與刪除前的完整內容；可查看專案的人能看，其他人 404', function () use (&$cp): void {
+    $pdo = ctx()['pdo'];
+    $e = signedIn('editor2');
+    $e->get("/projects/{$cp}");
+    $e->post("/projects/{$cp}/notes", ['content' => '第一版：<b>下午三點</b>開會']);
+    $nid = (int)$pdo->query("SELECT MAX(id) FROM project_notes WHERE project_id = {$cp}")->fetchColumn();
+    $e->get("/projects/{$cp}");
+    $e->post("/projects/{$cp}/notes/{$nid}/update", ['content' => '第二版：下午四點開會']);
+    $e->get("/projects/{$cp}");
+    $e->post("/projects/{$cp}/notes/{$nid}/update", ['content' => '第二版：下午四點開會']); // 內容沒變不新增紀錄
+    $e->get("/projects/{$cp}");
+    $e->post("/projects/{$cp}/notes/{$nid}/update", ['content' => '第三版：改到明天']);
+    $rows = $pdo->query("SELECT action, content_before, content_after FROM note_revisions WHERE note_id = {$nid} ORDER BY id")->fetchAll(PDO::FETCH_NUM);
+    assert_same([['update', '第一版：<b>下午三點</b>開會', '第二版：下午四點開會'], ['update', '第二版：下午四點開會', '第三版：改到明天']], $rows);
+    assert_contains("/projects/{$cp}/notes/history?note={$nid}", $e->get("/projects/{$cp}")->body, '已修改的隨手記有「查看修改紀錄」連結');
+
+    $e->post("/projects/{$cp}/notes/{$nid}/delete", []);
+    $del = $pdo->query("SELECT action, content_before, content_after FROM note_revisions WHERE note_id = {$nid} ORDER BY id DESC LIMIT 1")->fetch(PDO::FETCH_NUM);
+    assert_same(['delete', '第三版：改到明天', null], $del, '刪除時保存刪除前的內容');
+
+    $v = signedIn('viewer');
+    $page = $v->get("/projects/{$cp}/notes/history?note={$nid}")->body;
+    assert_same(200, $v->status, '只能查看的人也能看紀錄');
+    assert_contains('data-revision-count="3"', $page);
+    assert_contains('&lt;b&gt;下午三點&lt;/b&gt;', $page, '內容跳脫 HTML');
+    assert_contains('第三版：改到明天', $page);
+    assert_contains('（已刪除）', $page);
+    assert_contains('data-revision="delete"', $v->get("/projects/{$cp}/notes/history")->body, '專案的全部紀錄包含刪除');
+
+    foreach (['g1p0', 'g0p1', 'g0p0'] as $u) {
+        assert_same(404, signedIn($u)->get("/projects/{$cp}/notes/history")->status, $u);
+    }
+    $other = projectId('公司規章');
+    assert_same(404, signedIn('g1p1')->get("/projects/{$other}/notes/history?note={$nid}")->status, '其他專案的隨手記編號 404');
+    assert_true((int)$pdo->query("SELECT COUNT(*) FROM activity_logs WHERE action = 'note.history.view'")->fetchColumn() >= 2);
+});
+
 test('隨手記：作者一律取自登入帳號，表單中偽造的作者欄位被忽略；內容會跳脫 HTML', function () use (&$cp): void {
     $e = signedIn('editor2');
     $e->get("/projects/{$cp}");
