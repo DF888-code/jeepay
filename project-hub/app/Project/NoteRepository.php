@@ -107,10 +107,15 @@ final class NoteRepository
      *
      * @return array{items: list<array<string, mixed>>, next: ?int}
      */
-    public function revisions(int $projectId, ?int $noteId, ?int $beforeId, int $limit): array
+    public function revisions(int $projectId, ?int $noteId, ?int $beforeId, int $limit, ?int $authorId = null): array
     {
         $where = 'r.project_id = ?';
         $params = [$projectId];
+        if ($authorId !== null) {
+            // 一般員工只能看自己撰寫的隨手記的紀錄
+            $where .= ' AND n.author_id = ?';
+            $params[] = $authorId;
+        }
         if ($noteId !== null) {
             $where .= ' AND r.note_id = ?';
             $params[] = $noteId;

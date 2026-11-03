@@ -214,7 +214,8 @@ final class ProjectContentController extends ProjectBaseController
     }
 
     /**
-     * 隨手記修改／刪除紀錄：可查看專案的人都能看（與專案說明的版本歷史相同）。
+     * 隨手記修改／刪除紀錄（決議 #11，使用者指定）：最高權限管理者可看全部；
+     * 其他人必須仍能查看該專案，且只能看自己撰寫的隨手記的紀錄。
      * 可用 ?note=ID 只看單一隨手記；以 ?before=紀錄ID 往前分頁。
      */
     public function noteHistory(Request $request, int $id): Response
@@ -223,23 +224,26 @@ final class ProjectContentController extends ProjectBaseController
             return $this->deny('note.history.view', $id);
         }
         $project = (array)$this->projects()->find($id);
+        $isAdmin = (int)($this->app->auth->user()['is_super_admin'] ?? 0) === 1;
         $noteParam = $request->query('note');
         $note = null;
         if (ctype_digit($noteParam) && strlen($noteParam) <= 18) {
             $note = $this->notes()->findAny($id, (int)$noteParam);
-            if ($note === null) {
-                // 其他專案的隨手記編號：與找不到相同
+            if ($note === null || (!$isAdmin && (int)$note['author_id'] !== $this->uid())) {
+                // 其他專案的隨手記編號、或他人撰寫的隨手記：與找不到相同
                 return $this->deny('note.history.view', $id);
             }
         }
         $before = $request->query('before');
-        $page = $this->notes()->revisions($id, $note === null ? null : (int)$note['id'], ctype_digit($before) && strlen($before) <= 18 ? (int)$before : null, 30);
+        $page = $this->notes()->revisions($id, $note === null ? null : (int)$note['id'], ctype_digit($before) && strlen($before) <= 18 ? (int)$before : null, 30,
+            $isAdmin ? null : $this->uid());
         $this->app->logger->log('project', 'note.history.view', Log::RESULT_SUCCESS, $this->uid(), $this->app->auth->label(),
             $note === null ? null : "隨手記 #{$note['id']}", $id, (string)$project['name']);
         return $this->render('projects/note_history', [
             'title' => '隨手記修改紀錄：' . $project['name'],
             'project' => $project,
             'note' => $note,
+            'isAdmin' => $isAdmin,
             'revisions' => $page['items'],
             'next' => $page['next'],
         ]);

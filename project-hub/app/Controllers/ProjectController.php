@@ -86,8 +86,11 @@ final class ProjectController extends ProjectBaseController
         $before = $request->query('before');
         $notes = (new NoteRepository($this->app->db))->page($id, ctype_digit($before) ? (int)$before : null, ProjectContentController::NOTES_PAGE_SIZE);
         // 每則隨手記可執行的動作（決議 #10）：作者本人具編輯權限可修改與刪除；具刪除權限者可刪除他人的隨手記
+        $isAdmin = (int)($this->app->auth->user()['is_super_admin'] ?? 0) === 1;
         foreach ($notes['items'] as &$note) {
             $mine = (int)$note['author_id'] === $uid;
+            // 修改紀錄只給作者本人與最高權限管理者看（決議 #11）
+            $note['can_history'] = $mine || $isAdmin;
             $note['can_edit'] = $mine && $can['edit'];
             $note['can_delete'] = ($mine && $can['edit']) || $can['delete'];
         }
@@ -101,6 +104,7 @@ final class ProjectController extends ProjectBaseController
             'title' => (string)$project['name'],
             'project' => $project,
             'can' => $can,
+            'canNoteHistory' => $isAdmin || $can['edit'],
             'isAdmin' => (int)($this->app->auth->user()['is_super_admin'] ?? 0) === 1,
             'keywords' => (new KeywordRepository($this->app->db))->list($id),
             'notes' => $notes['items'],

@@ -154,14 +154,24 @@ test('隨手記修改紀錄：保存修改前後與刪除前的完整內容；�
     $del = $pdo->query("SELECT action, content_before, content_after FROM note_revisions WHERE note_id = {$nid} ORDER BY id DESC LIMIT 1")->fetch(PDO::FETCH_NUM);
     assert_same(['delete', '第三版：改到明天', null], $del, '刪除時保存刪除前的內容');
 
-    $v = signedIn('viewer');
-    $page = $v->get("/projects/{$cp}/notes/history?note={$nid}")->body;
-    assert_same(200, $v->status, '只能查看的人也能看紀錄');
+    // 作者本人可以看
+    $page = signedIn('editor2')->get("/projects/{$cp}/notes/history?note={$nid}")->body;
     assert_contains('data-revision-count="3"', $page);
     assert_contains('&lt;b&gt;下午三點&lt;/b&gt;', $page, '內容跳脫 HTML');
     assert_contains('第三版：改到明天', $page);
     assert_contains('（已刪除）', $page);
-    assert_contains('data-revision="delete"', $v->get("/projects/{$cp}/notes/history")->body, '專案的全部紀錄包含刪除');
+    // 最高權限管理者可以看全部
+    $admin = adminLogin();
+    assert_contains('data-revision-count="3"', $admin->get("/projects/{$cp}/notes/history?note={$nid}")->body);
+    assert_contains('data-revision="delete"', $admin->get("/projects/{$cp}/notes/history")->body);
+    // 有查看權限但不是作者：看不到這則的紀錄，專案紀錄頁也不會列出別人的隨手記
+    $v = signedIn('viewer');
+    assert_same(404, $v->get("/projects/{$cp}/notes/history?note={$nid}")->status, '非作者不能看他人的修改紀錄');
+    assert_contains('data-revision-count="0"', $v->get("/projects/{$cp}/notes/history")->body);
+    assert_not_contains('第三版：改到明天', $v->body);
+    assert_not_contains('修改與刪除紀錄</a>', $v->get("/projects/{$cp}")->body, '只能查看的人沒有入口');
+    $g = signedIn('g1p1');
+    assert_same(404, $g->get("/projects/{$cp}/notes/history?note={$nid}")->status, '具編輯／刪除權限的其他員工也看不到');
 
     foreach (['g1p0', 'g0p1', 'g0p0'] as $u) {
         assert_same(404, signedIn($u)->get("/projects/{$cp}/notes/history")->status, $u);

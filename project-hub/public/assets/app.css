@@ -98,3 +98,6 @@ h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6, .card-header, .alert, .lis
   /* 表單 16px 字級：iOS Safari 小於 16px 時會在聚焦時自動放大頁面 */
   .form-control, .form-select, .form-control-sm, .form-select-sm { font-size: 1rem; }
 }
+
+/* 隨手記修改紀錄：桌機三欄等高；手機上下排列時維持內容原本高度，避免與下一欄重疊 */
+@media (min-width: 992px) { .rev-box { height: 100%; } }
