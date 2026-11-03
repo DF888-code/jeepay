@@ -311,6 +311,9 @@ final class AttachmentController extends ProjectBaseController
         if ($driver === GoogleDriveStorage::DRIVER) {
             return $usage['bytes'] + $incoming > $this->app->settings->int('attachments.drive_quota_mb') * 1024 * 1024;
         }
+        if ($driver === \ProjectHub\Attachment\R2Storage::DRIVER) {
+            return $usage['bytes'] + $incoming > $this->app->settings->int('attachments.r2_quota_mb') * 1024 * 1024;
+        }
         return $usage['bytes'] + $incoming > $this->app->settings->int('attachments.quota_mb') * 1024 * 1024
             || $usage['files'] >= $this->app->settings->int('attachments.max_files');
     }

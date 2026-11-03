@@ -135,4 +135,58 @@ if ($method === 'POST' && $path === '/brevo') {
     out(201, ['messageId' => '<fake@brevo>']);
 }
 
+// ---- 假 Cloudflare R2（S3 相容）：/r2/{bucket}/{key} ----
+if (preg_match('#^/r2/([^/]+)/(.+)$#', $path, $m)) {
+    require_once dirname(__DIR__, 2) . '/vendor/autoload.php';
+    $xml = static function (int $status, string $code): never {
+        http_response_code($status);
+        header('Content-Type: application/xml');
+        echo "<?xml version=\"1.0\" encoding=\"UTF-8\"?><Error><Code>{$code}</Code><Message>fake</Message></Error>";
+        exit;
+    };
+    [$bucket, $key] = [rawurldecode($m[1]), rawurldecode($m[2])];
+    $auth = $headers['authorization'] ?? '';
+    if (!str_starts_with($auth, 'AWS4-HMAC-SHA256 Credential=r2testaccess/')) {
+        $xml(403, 'InvalidAccessKeyId');
+    }
+    // 以相同演算法重算簽章：確認標頭、日期與內容雜湊一致（演算法本身的正確性由 AWS 官方測試向量驗證）
+    $hash = $headers['x-amz-content-sha256'] ?? '';
+    if ($hash !== hash('sha256', $raw)) {
+        $xml(400, 'XAmzContentSHA256Mismatch');
+    }
+    $date = DateTime::createFromFormat('Ymd\THis\Z', $headers['x-amz-date'] ?? '', new DateTimeZone('UTC'));
+    $extra = isset($headers['content-type']) && $method === 'PUT' ? ['content-type' => $headers['content-type']] : [];
+    $expected = (new ProjectHub\Attachment\S3Signer('r2testaccess', 'r2testsecret'))
+        ->sign($method, 'http://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'], $extra, $hash, $date ? $date->getTimestamp() : 0)['authorization'];
+    if (!hash_equals($expected, $auth)) {
+        $xml(403, 'SignatureDoesNotMatch');
+    }
+    if ($bucket !== 'ph-bucket') {
+        $xml(404, 'NoSuchBucket');
+    }
+    @mkdir($dir . '/r2', 0700, true);
+    $file = $dir . '/r2/' . hash('sha256', $key);
+    file_put_contents($dir . '/r2_requests.log', $method . ' ' . $key . "\n", FILE_APPEND);
+    if ($method === 'PUT') {
+        file_put_contents($file, $raw);
+        file_put_contents($file . '.key', $key);
+        http_response_code(200);
+        exit;
+    }
+    if ($method === 'GET') {
+        if (!is_file($file)) {
+            $xml(404, 'NoSuchKey');
+        }
+        header('Content-Type: application/octet-stream');
+        readfile($file);
+        exit;
+    }
+    if ($method === 'DELETE') {
+        @unlink($file);
+        @unlink($file . '.key');
+        http_response_code(204);
+        exit;
+    }
+}
+
 out(404, ['error' => 'not found: ' . $method . ' ' . $path]);

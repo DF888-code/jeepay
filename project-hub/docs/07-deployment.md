@@ -49,6 +49,18 @@
 
 注意：連結的 Google 帳號就是附件的實際存放處，請使用公司可長期保管的帳號，不要使用個人帳號；不要在雲端硬碟手動移動、改名或刪除該資料夾內的檔案。
 
+## 2.1b 設定 Cloudflare R2 附件儲存（選用，v1.1.0 起）
+
+1. Cloudflare 後台 → R2 物件儲存，第一次使用先啟用 R2；
+2. 建立 bucket（例如 `project-hub-attachments`），**不要開啟公開存取或 r2.dev 網址**；
+3. 在 R2 總覽頁複製「帳戶 ID」；
+4. 「管理 API 權杖」→ 建立 API 權杖：權限「物件讀取和寫入」、範圍「僅套用至特定 bucket」，複製 Access Key ID 與 Secret Access Key（Secret 只顯示一次）；
+5. 管理後台「系統設定 → 附件儲存位置 → Cloudflare R2」填入並儲存，按「測試連線」；
+6. 成功後把「新上傳附件的儲存位置」改為 Cloudflare R2；
+7. 驗收：上傳圖片與 PDF，確認可預覽與下載；在 Cloudflare 後台的 bucket 中會看到 64 碼隨機名稱的物件。
+
+已有附件存在 R2 時，系統不允許更換帳戶 ID 或 bucket（舊檔會讀不到）。
+
 ## 2.2 設定寄信（v0.9.0 起）
 
 「系統設定 → 寄信設定」：以 Brevo 為例，SMTP 主機 `smtp-relay.brevo.com`、連接埠 587、STARTTLS，帳號與密碼為 Brevo 後台「SMTP & API」頁的 SMTP 登入資訊；SMTP 不通時改用「Brevo HTTPS API」並填入 API 金鑰。寄件者 Email 必須是 Brevo 已驗證的寄件地址。儲存後依序按「測試連線」與「寄送測試信」。

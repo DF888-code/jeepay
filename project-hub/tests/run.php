@@ -19,6 +19,7 @@ $failures = 0;
 
 require __DIR__ . '/Unit/AuthPrimitivesTest.php';
 require __DIR__ . '/Unit/SearchNormalizerTest.php';
+require __DIR__ . '/Unit/S3SignerTest.php';
 $failures += run_registered_tests('單元測試');
 
 $dbName = (string)getenv('PH_TEST_DB_NAME');
@@ -93,6 +94,7 @@ file_put_contents($tmp . '/config.php', '<?php return ' . var_export([
         'google_api' => $fakeBase . '/drive/v3',
         'google_upload' => $fakeBase . '/upload/drive/v3',
         'brevo' => $fakeBase . '/brevo',
+        'r2' => $fakeBase . '/r2',
     ],
 ], true) . ';');
 
@@ -150,6 +152,8 @@ try {
     $failures += run_registered_tests('整合測試：歷史操作紀錄（階段 8）');
     require __DIR__ . '/Integration/SettingsTest.php';
     $failures += run_registered_tests('整合測試：系統設定中心、寄信、Google Drive（階段 9）');
+    require __DIR__ . '/Integration/R2Test.php';
+    $failures += run_registered_tests('整合測試：Cloudflare R2 附件儲存');
     require __DIR__ . '/Integration/RecoveryTest.php';
     $failures += run_registered_tests('整合測試：最高權限管理者 Email 救援（階段 10）');
     require __DIR__ . '/Integration/SecurityTest.php';

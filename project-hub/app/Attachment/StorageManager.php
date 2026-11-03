@@ -13,7 +13,7 @@ use RuntimeException;
  */
 final class StorageManager
 {
-    public const DRIVERS = ['local', GoogleDriveStorage::DRIVER];
+    public const DRIVERS = ['local', GoogleDriveStorage::DRIVER, R2Storage::DRIVER];
 
     private ?GoogleDrive $drive = null;
 
@@ -26,6 +26,7 @@ final class StorageManager
         return match ($driver) {
             'local' => new LocalFileStorage($this->app->storagePath() . '/uploads'),
             GoogleDriveStorage::DRIVER => new GoogleDriveStorage($this->drive(), $this->app->storagePath() . '/tmp'),
+            R2Storage::DRIVER => $this->r2(),
             default => throw new RuntimeException('不支援的附件儲存位置：' . $driver),
         };
     }
@@ -37,7 +38,15 @@ final class StorageManager
         if ($driver === GoogleDriveStorage::DRIVER && !$this->drive()->connected()) {
             return '附件儲存位置設定為 Google Drive，但尚未連結 Google 帳號，請聯絡最高權限管理者。';
         }
+        if ($driver === R2Storage::DRIVER && !$this->r2()->configured()) {
+            return '附件儲存位置設定為 Cloudflare R2，但尚未完成設定，請聯絡最高權限管理者。';
+        }
         return $this->forDriver($driver);
+    }
+
+    public function r2(): R2Storage
+    {
+        return new R2Storage($this->app->settings, $this->app->secrets, $this->app->storagePath() . '/tmp', $this->app->serviceEndpoints());
     }
 
     public function drive(): GoogleDrive

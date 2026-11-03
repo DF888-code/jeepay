@@ -66,7 +66,7 @@ PH_TEST_DSN="mysql:host=127.0.0.1;dbname=ph_test;charset=utf8mb4" PH_TEST_USER=p
 php tests/schema_smoke_test.php
 ```
 
-最近一次結果（MariaDB 10.11、PHP 8.3）：單元 15、整合 157（登入 27＋管理後台 23＋專案與雙重授權 17＋說明／關鍵字／隨手記 14＋附件 15＋搜尋 12＋歷史紀錄 10＋系統設定 17＋Email 救援 11＋安全掃描 11）、Schema 26 項，全部通過。整合測試會啟動假的 Google／Brevo／SMTP 服務（`tests/Fakes/`），不需連網。
+最近一次結果（MariaDB 10.11、PHP 8.3）：單元 17、整合 165（登入 27＋管理後台 23＋專案與雙重授權 17＋說明／關鍵字／隨手記 16＋附件 15＋搜尋 12＋歷史紀錄 10＋系統設定 17＋Email 救援 11＋安全掃描 12＋R2 5）、Schema 26 項，全部通過。整合測試會啟動假的 Google／Brevo／SMTP 服務（`tests/Fakes/`），不需連網。
 
 ## 部署
 

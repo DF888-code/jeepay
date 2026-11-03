@@ -149,6 +149,8 @@ final class App
             'GET /admin/settings/storage' => [self::ACCESS_ADMIN, AdminSettingsController::class, 'storage'],
             'POST /admin/settings/storage' => [self::ACCESS_ADMIN, AdminSettingsController::class, 'saveStorage'],
             'POST /admin/settings/storage/google' => [self::ACCESS_ADMIN, AdminSettingsController::class, 'saveGoogleClient'],
+            'POST /admin/settings/storage/r2' => [self::ACCESS_ADMIN, AdminSettingsController::class, 'saveR2'],
+            'POST /admin/settings/storage/r2/test' => [self::ACCESS_ADMIN, AdminSettingsController::class, 'testR2'],
             'GET /admin/settings/storage/google/connect' => [self::ACCESS_ADMIN, AdminSettingsController::class, 'connectGoogle'],
             'GET /admin/settings/storage/google/callback' => [self::ACCESS_ADMIN, AdminSettingsController::class, 'googleCallback'],
             'POST /admin/settings/storage/google/disconnect' => [self::ACCESS_ADMIN, AdminSettingsController::class, 'disconnectGoogle'],

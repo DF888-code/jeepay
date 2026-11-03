@@ -58,6 +58,7 @@ final class ActivityLabels
         'mail.test' => '測試寄信',
         'storage.google.connect' => '連結 Google Drive',
         'storage.google.disconnect' => '中斷連結 Google Drive',
+        'storage.r2.test' => '測試 Cloudflare R2 連線',
     ];
 
     private const RESULTS = ['success' => '成功', 'failure' => '失敗', 'denied' => '拒絕'];

@@ -225,7 +225,7 @@ test('附件儲存：尚未連結 Google 前不能選 Google Drive', function ()
     $html = $setAdmin->get('/admin/settings/storage')->body;
     assert_contains('data-drive-status="disconnected"', $html);
     assert_contains('/admin/settings/storage/google/callback', $html, '顯示要貼到 Google Cloud Console 的重新導向 URI');
-    $setAdmin->post('/admin/settings/storage', ['attachments__storage' => 'google_drive', 'attachments__drive_quota_mb' => '10240']);
+    $setAdmin->post('/admin/settings/storage', ['attachments__storage' => 'google_drive', 'attachments__drive_quota_mb' => '10240', 'attachments__r2_quota_mb' => '9216']);
     assert_same(422, $setAdmin->status);
     assert_contains('請先完成「連結 Google 帳號」', $setAdmin->body);
     assert_same(null, settingRow('attachments.storage'));
@@ -274,7 +274,7 @@ test('Google 連結成功：Token 加密保存、建立專用資料夾、顯示�
     assert_not_contains($refresh, $html);
     assert_same(1, count(glob(fakeDir() . '/folder_*') ?: []), '建立一個專用資料夾');
     assert_true(logCount("action = 'storage.google.connect' AND result = 'success' AND detail LIKE '%owner@example.com%'") === 1);
-    $setAdmin->post('/admin/settings/storage', ['attachments__storage' => 'google_drive', 'attachments__drive_quota_mb' => '10240']);
+    $setAdmin->post('/admin/settings/storage', ['attachments__storage' => 'google_drive', 'attachments__drive_quota_mb' => '10240', 'attachments__r2_quota_mb' => '9216']);
     assert_same('"google_drive"', settingRow('attachments.storage'));
 });
 
@@ -334,7 +334,7 @@ test('切換儲存位置：新附件改存本機，雲端舊檔仍可讀取；�
 
     elevate($setAdmin, '/admin/settings/storage');
     $setAdmin->get('/admin/settings/storage');
-    $setAdmin->post('/admin/settings/storage', ['attachments__storage' => 'local', 'attachments__drive_quota_mb' => '10240']);
+    $setAdmin->post('/admin/settings/storage', ['attachments__storage' => 'local', 'attachments__drive_quota_mb' => '10240', 'attachments__r2_quota_mb' => '9216']);
     $r = uploadAs('editor2', $driveProject, fixture('local.pdf', "%PDF-1.4\n%%EOF\n"), '本機.pdf');
     $row = attachmentRow((int)$r['json']['id']);
     assert_same('local', $row['storage_driver']);
@@ -354,7 +354,7 @@ test('刪除雲端附件：同時刪除 Google Drive 上的原檔與預覽圖', 
 
 test('中斷連結：撤銷授權、雲端檔案保留但暫時無法讀取；換成其他帳號會被拒絕，同一帳號重新連結即恢復', function () use (&$setAdmin, &$driveFileId): void {
     $setAdmin->get('/admin/settings/storage');
-    $setAdmin->post('/admin/settings/storage', ['attachments__storage' => 'google_drive', 'attachments__drive_quota_mb' => '10240']);
+    $setAdmin->post('/admin/settings/storage', ['attachments__storage' => 'google_drive', 'attachments__drive_quota_mb' => '10240', 'attachments__r2_quota_mb' => '9216']);
     $setAdmin->get('/admin/settings/storage');
     $setAdmin->post('/admin/settings/storage/google', ['storage__google_client_id' => 'other-client.apps.googleusercontent.com']);
     assert_contains('請先「中斷連結」', $setAdmin->body, '連結中不可更換用戶端');

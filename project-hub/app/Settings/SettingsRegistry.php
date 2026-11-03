@@ -140,13 +140,26 @@ final class SettingsRegistry
             ],
             'attachments.storage' => [
                 'category' => 'storage', 'page' => 'storage', 'label' => '新上傳附件的儲存位置', 'type' => 'enum', 'default' => 'local',
-                'options' => ['local' => '本機（InfinityFree 主機）', 'google_drive' => 'Google Drive'],
+                'options' => ['local' => '本機（InfinityFree 主機）', 'google_drive' => 'Google Drive', 'r2' => 'Cloudflare R2'],
                 'help' => '只影響之後上傳的檔案；每個檔案記住自己的位置，舊檔不需搬移。',
             ],
             'attachments.drive_quota_mb' => [
                 'category' => 'storage', 'page' => 'storage', 'label' => 'Google Drive 附件總容量上限（MB）', 'type' => 'int',
                 'default' => 10240, 'min' => 100, 'max' => 2097152,
                 'help' => 'Google 免費帳號共 15 GB，與 Gmail、Google 相簿共用；建議預留空間。',
+            ],
+            'attachments.r2_quota_mb' => [
+                'category' => 'storage', 'page' => 'storage', 'label' => 'Cloudflare R2 附件總容量上限（MB）', 'type' => 'int',
+                'default' => 9216, 'min' => 100, 'max' => 2097152,
+                'help' => 'R2 免費額度為每月 10 GB 儲存空間；超過會開始計費，預設留 1 GB 緩衝。',
+            ],
+            'storage.r2_account_id' => [
+                'category' => 'storage', 'page' => 'storage', 'label' => 'Cloudflare 帳戶 ID（Account ID）', 'type' => 'string', 'default' => '',
+                'max' => 32, 'format' => 'hex32', 'help' => '32 個英數字，在 R2 總覽頁右側可以找到。',
+            ],
+            'storage.r2_bucket' => [
+                'category' => 'storage', 'page' => 'storage', 'label' => 'R2 bucket 名稱', 'type' => 'string', 'default' => '',
+                'max' => 63, 'format' => 'bucket', 'help' => '只能有小寫英文、數字與連字號，例如 project-hub-attachments。',
             ],
             'storage.google_client_id' => [
                 'category' => 'storage', 'page' => 'storage', 'label' => 'Google OAuth 用戶端 ID', 'type' => 'string', 'default' => '',

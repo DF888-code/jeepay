@@ -10,6 +10,7 @@ use ProjectHub\Attachment\AttachmentRepository;
 use ProjectHub\Attachment\DriveException;
 use ProjectHub\Attachment\GoogleDrive;
 use ProjectHub\Attachment\GoogleDriveStorage;
+use ProjectHub\Attachment\R2Storage;
 use ProjectHub\Attachment\StorageManager;
 use ProjectHub\Http\Request;
 use ProjectHub\Http\Response;
@@ -166,10 +167,14 @@ final class AdminSettingsController extends AdminController
             return $deny;
         }
         $defs = SettingsRegistry::forPage('storage');
-        unset($defs['storage.google_client_id']); // 用戶端 ID 在另一個表單
+        // 用戶端 ID、R2 帳號資訊在各自的表單
+        unset($defs['storage.google_client_id'], $defs['storage.r2_account_id'], $defs['storage.r2_bucket']);
         [$values, $errors] = $this->collectDefs($defs, $request);
         if ($errors === [] && $values['attachments.storage'] === GoogleDriveStorage::DRIVER && !$this->drive()->connected()) {
             $errors['attachments.storage'] = '請先完成「連結 Google 帳號」，才能把新附件存到 Google Drive。';
+        }
+        if ($errors === [] && $values['attachments.storage'] === R2Storage::DRIVER && !$this->r2()->configured()) {
+            $errors['attachments.storage'] = '請先完成 Cloudflare R2 設定並按「測試連線」，才能把新附件存到 R2。';
         }
         if ($errors !== []) {
             return $this->renderStorage($values + $this->currentValues('storage'), $errors, 422);
@@ -177,6 +182,67 @@ final class AdminSettingsController extends AdminController
         $changes = $this->apply($values);
         $this->logChanges('settings.update', '附件儲存位置', $changes);
         return $this->back('/admin/settings/storage', 'success', $changes === [] ? '設定沒有變更。' : '附件儲存設定已儲存。');
+    }
+
+    /** 儲存 Cloudflare R2 的帳戶 ID、bucket 與 API 金鑰（金鑰留空表示不變更）。 */
+    public function saveR2(Request $request): Response
+    {
+        if (($deny = $this->requireElevated('/admin/settings/storage')) !== null) {
+            return $deny;
+        }
+        $all = SettingsRegistry::definitions();
+        [$values, $errors] = $this->collectDefs(['storage.r2_account_id' => $all['storage.r2_account_id'], 'storage.r2_bucket' => $all['storage.r2_bucket']], $request);
+        $secrets = ['r2_access_key_id' => [R2Storage::ACCESS_KEY, 'R2 Access Key ID'], 'r2_secret_access_key' => [R2Storage::SECRET_KEY, 'R2 Secret Access Key']];
+        $newSecrets = [];
+        foreach ($secrets as $field => [$key, $label]) {
+            $v = trim($request->input($field));
+            if ($v === '') {
+                continue;
+            }
+            if (strlen($v) > 200 || !preg_match('/^[A-Za-z0-9]+$/', $v)) {
+                $errors[$field] = '金鑰格式不正確（只會有英文與數字）。';
+                continue;
+            }
+            $newSecrets[$key] = [$v, $label];
+        }
+        $usage = (new AttachmentRepository($this->app->db))->usage(R2Storage::DRIVER);
+        $moving = $values['storage.r2_account_id'] !== $this->app->settings->string('storage.r2_account_id')
+            || $values['storage.r2_bucket'] !== $this->app->settings->string('storage.r2_bucket');
+        if ($errors === [] && $moving && $usage['files'] > 0) {
+            // 舊附件存在原本的 bucket；換位置會讓那些檔案全部讀不到
+            $errors['storage.r2_bucket'] = "已有 {$usage['files']} 個附件存放在目前的 R2 bucket，不能更換帳戶 ID 或 bucket。";
+        }
+        if ($errors !== []) {
+            return $this->renderStorage($this->currentValues('storage'), $errors, 422);
+        }
+        $changes = $this->apply($values);
+        foreach ($newSecrets as $key => [$v, $label]) {
+            $this->app->secrets->set($key, $v, (int)$this->admin()['id']);
+            $changes[] = $label . '：已更新'; // 金鑰本身絕不寫入紀錄
+        }
+        $this->logChanges('settings.update', 'Cloudflare R2', $changes);
+        return $this->back('/admin/settings/storage', 'success', $changes === [] ? '設定沒有變更。' : 'Cloudflare R2 設定已儲存，請按「測試連線」確認。');
+    }
+
+    /** 寫入、讀回、刪除一個測試物件，確認帳戶 ID、bucket 與金鑰權限都正確。 */
+    public function testR2(Request $request): Response
+    {
+        if (($deny = $this->requireElevated('/admin/settings/storage')) !== null) {
+            return $deny;
+        }
+        try {
+            $this->r2()->selfTest();
+        } catch (DriveException $e) {
+            $this->log('storage.r2.test', $e->getMessage(), null, null, null, Log::RESULT_FAILURE);
+            return $this->back('/admin/settings/storage', 'error', '測試失敗：' . $e->getMessage());
+        }
+        $this->log('storage.r2.test', '寫入、讀取、刪除測試檔皆成功');
+        return $this->back('/admin/settings/storage', 'success', 'Cloudflare R2 連線測試成功（寫入、讀取、刪除都正常）。現在可以把「新上傳附件的儲存位置」改為 Cloudflare R2。');
+    }
+
+    private function r2(): R2Storage
+    {
+        return (new StorageManager($this->app))->r2();
     }
 
     /** 儲存 Google OAuth 用戶端 ID 與密鑰。 */
@@ -472,6 +538,11 @@ final class AdminSettingsController extends AdminController
             'values' => $values,
             'errors' => $errors,
             'clientSecretSet' => $this->app->secrets->has(GoogleDrive::CLIENT_SECRET_KEY),
+            'r2KeysSet' => [
+                'r2_access_key_id' => $this->app->secrets->has(R2Storage::ACCESS_KEY),
+                'r2_secret_access_key' => $this->app->secrets->has(R2Storage::SECRET_KEY),
+            ],
+            'r2Configured' => $this->r2()->configured(),
             'connection' => $drive->connection(),
             'previous' => $this->app->secrets->getJson(self::PREVIOUS_CONNECTION_KEY),
             'redirectUri' => $this->redirectUri(),
@@ -479,10 +550,12 @@ final class AdminSettingsController extends AdminController
             'usage' => [
                 'local' => $repo->usage('local'),
                 GoogleDriveStorage::DRIVER => $repo->usage(GoogleDriveStorage::DRIVER),
+                R2Storage::DRIVER => $repo->usage(R2Storage::DRIVER),
             ],
             'quota' => [
                 'local' => $this->app->settings->int('attachments.quota_mb'),
                 GoogleDriveStorage::DRIVER => $this->app->settings->int('attachments.drive_quota_mb'),
+                R2Storage::DRIVER => $this->app->settings->int('attachments.r2_quota_mb'),
             ],
             'elevated' => $this->elevated(),
             'returnTo' => '/admin/settings/storage',
