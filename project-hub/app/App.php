@@ -62,6 +62,8 @@ final class App
     public AuthState $auth;
     public ActivityLogger $logger;
     public Request $request;
+    /** 每次請求不同的 CSP nonce（只用於 Turbo 讀取進度條的 <style>） */
+    public string $cspNonce = '';
 
     public function __construct(public readonly string $basePath)
     {
@@ -164,6 +166,7 @@ final class App
     {
         $this->request = $request;
         $requestId = bin2hex(random_bytes(6));
+        $this->cspNonce = base64_encode(random_bytes(16));
         $this->watchFatal($requestId, $request);
         try {
             $response = $this->dispatch($request);
@@ -327,6 +330,7 @@ final class App
             'siteName' => $this->settings->string('system.site_name'),
             'appVersion' => trim((string)@file_get_contents($this->basePath . '/VERSION')),
             'timezone' => $this->settings->string('system.timezone'),
+            'cspNonce' => $this->cspNonce,
         ]);
     }
 
@@ -448,7 +452,7 @@ final class App
         }
         if (!isset($response->headers['Content-Security-Policy'])) {
             // 附件回應有自己更嚴格的 CSP（含 sandbox），不可被一般頁面的設定覆蓋
-            $response->withHeader('Content-Security-Policy', "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
+            $response->withHeader('Content-Security-Policy', "default-src 'self'; img-src 'self' data:; style-src 'self' 'nonce-" . $this->cspNonce . "'; script-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
         }
         if (!isset($response->headers['Cache-Control'])) {
             // 登入後頁面含個人資料，不允許瀏覽器或代理快取

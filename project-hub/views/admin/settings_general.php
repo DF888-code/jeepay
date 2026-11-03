@@ -3,6 +3,7 @@ use ProjectHub\Settings\SettingsRegistry;
 
 $settingsTab = 'general';
 require __DIR__ . '/_settings_nav.php';
+if (empty($elevated)) { return; } // 未完成身分驗證：只顯示驗證框，不輸出設定內容
 $disabledAttr = empty($elevated) ? ' disabled' : '';
 ?>
 <?php if ($errors !== []): ?>

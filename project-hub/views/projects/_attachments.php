@@ -40,7 +40,7 @@ $files = array_values(array_filter($items, static fn(array $a): bool => $a['kind
           <span class="d-block"><?= e($a['original_name']) ?></span>
           <span class="small text-body-secondary"><?= e(UploadInspector::label((string)$a['mime_type'])) ?> · <?= e(AttachmentController::humanSize((int)$a['size_bytes'])) ?></span>
         </span>
-        <a class="btn btn-sm btn-outline-primary" href="/attachments/<?= $aid ?>/download">下載</a>
+        <a class="btn btn-sm btn-outline-primary" href="/attachments/<?= $aid ?>/download" data-turbo="false">下載</a>
         <?php if ($n['can_delete']): ?>
           <form method="post" action="/projects/<?= (int)$project['id'] ?>/attachments/<?= $aid ?>/delete" class="m-0" data-confirm="確定要刪除附件「<?= e($a['original_name']) ?>」嗎？">
             <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">

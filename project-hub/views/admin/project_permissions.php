@@ -13,6 +13,7 @@ $fields = ['can_view' => ['查看', 'g_view', 'view'], 'can_edit' => ['編輯', 
 </nav>
 <h2 class="h5 mb-3">授權名單：<?= e($project['name']) ?></h2>
 <?php require __DIR__ . '/_reauth.php'; ?>
+<?php if (empty($elevated)) { return; } // 未完成身分驗證：只顯示驗證框，不輸出管理內容 ?>
 <p class="small text-body-secondary">
   每一列的儲存按鈕只更新該員工在<strong>此專案</strong>的權限。專案權限不會授予任何全域權限：
   員工實際能做什麼，需要「全域權限」與「專案權限」同時允許，結果顯示在「實際效果」欄。

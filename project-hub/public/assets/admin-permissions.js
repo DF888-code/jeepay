@@ -3,7 +3,6 @@
 // 權限是否生效完全由伺服器決定；此檔不參與任何權限判斷。
 (function () {
   var rows = document.querySelectorAll('[data-perm-row]');
-  var submitting = false;
 
   function snapshot(form) {
     return Array.prototype.map.call(form.querySelectorAll('[data-perm]'), function (box) {
@@ -33,17 +32,29 @@
       if (badge) { badge.classList.toggle('d-none', !dirty); }
     });
 
-    form.addEventListener('submit', function () { submitting = true; });
+    // 送出時標記在 body 上：換頁後 body 會被替換，標記自動清除
+    form.addEventListener('submit', function () { document.body.dataset.permSubmitting = '1'; });
   });
 
+  // 以下監聽只註冊一次（Turbo 換頁時本檔會再執行），每次都檢查「當下頁面」是否有未儲存的修改
+  if (window.__phPermGuard) { return; }
+  window.__phPermGuard = true;
+  var MESSAGE = '有尚未儲存的權限修改，確定要離開嗎？';
+
+  function hasUnsaved() {
+    return !document.body.dataset.permSubmitting && document.querySelector('[data-perm-row].bg-warning-subtle') !== null;
+  }
+
   window.addEventListener('beforeunload', function (event) {
-    if (submitting) { return; }
-    var anyDirty = Array.prototype.some.call(rows, function (form) {
-      return form.classList.contains('bg-warning-subtle');
-    });
-    if (anyDirty) {
+    if (hasUnsaved()) {
       event.preventDefault();
       event.returnValue = '';
+    }
+  });
+  // Turbo 換頁不會觸發 beforeunload，另外攔截
+  document.addEventListener('turbo:before-visit', function (event) {
+    if (hasUnsaved() && !window.confirm(MESSAGE)) {
+      event.preventDefault();
     }
   });
 })();

@@ -1,6 +1,7 @@
 <?php
 $settingsTab = 'mail';
 require __DIR__ . '/_settings_nav.php';
+if (empty($elevated)) { return; } // 未完成身分驗證：只顯示驗證框，不輸出設定內容
 $disabledAttr = empty($elevated) ? ' disabled' : '';
 $sections = [
     '寄件者' => ['mail.driver', 'mail.from_address', 'mail.from_name'],

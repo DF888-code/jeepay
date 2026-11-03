@@ -3,7 +3,7 @@
     <h1 class="h4 mb-3">兩步驟驗證</h1>
     <?php if (!empty($error)): ?><div class="alert alert-danger" role="alert"><?= e($error) ?></div><?php endif; ?>
     <p>請開啟 Google Authenticator，輸入 <?= e($siteName) ?> 的 6 位數驗證碼。</p>
-    <form method="post" action="/login/totp">
+    <form data-turbo="false" method="post" action="/login/totp">
       <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
       <div class="mb-4">
         <label for="code" class="form-label">驗證碼</label>

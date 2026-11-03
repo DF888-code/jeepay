@@ -4,6 +4,7 @@ use ProjectHub\Support\Clock;
 
 $settingsTab = 'storage';
 require __DIR__ . '/_settings_nav.php';
+if (empty($elevated)) { return; } // 未完成身分驗證：只顯示驗證框，不輸出設定內容
 $disabledAttr = empty($elevated) ? ' disabled' : '';
 $connected = $connection !== null;
 $labels = ['local' => '本機（InfinityFree）', 'google_drive' => 'Google Drive'];
@@ -77,7 +78,7 @@ $labels = ['local' => '本機（InfinityFree）', 'google_drive' => 'Google Driv
       <div class="col-12 d-flex flex-wrap gap-2">
         <button type="submit" class="btn btn-outline-primary"<?= $disabledAttr ?>>儲存用戶端</button>
         <?php if (!empty($elevated) && $values['storage.google_client_id'] !== '' && $clientSecretSet && $curl): ?>
-          <a class="btn btn-primary" href="/admin/settings/storage/google/connect" data-drive-connect><?= $connected ? '重新連結 Google 帳號' : '連結 Google 帳號' ?></a>
+          <a class="btn btn-primary" href="/admin/settings/storage/google/connect" data-drive-connect data-turbo="false"><?= $connected ? '重新連結 Google 帳號' : '連結 Google 帳號' ?></a>
         <?php else: ?>
           <button type="button" class="btn btn-primary" disabled><?= $connected ? '重新連結 Google 帳號' : '連結 Google 帳號' ?></button>
         <?php endif; ?>

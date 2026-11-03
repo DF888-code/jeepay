@@ -61,16 +61,25 @@ test('權限：非管理者看不到設定中心（404），未登入導向登�
     assert_same(null, settingRow('system.site_name'));
 });
 
-test('一般設定：顯示所有設定；未完成管理者驗證時不能儲存', function () use (&$setAdmin): void {
+test('一般設定：未完成管理者驗證時不顯示設定內容、不能儲存；驗證後顯示所有設定', function () use (&$setAdmin): void {
     $setAdmin = adminLogin();
+    foreach (['/admin/settings', '/admin/settings/mail', '/admin/settings/storage', '/admin/users', '/admin/permissions'] as $locked) {
+        $page = $setAdmin->get($locked)->body;
+        assert_contains('reauth-code', $page, "{$locked} 顯示驗證框");
+        assert_not_contains('data-setting=', $page, "{$locked} 不輸出設定內容");
+        assert_not_contains('data-perm-row', $page, "{$locked} 不輸出權限內容");
+        assert_not_contains('新增使用者', $page, "{$locked} 不輸出使用者管理內容");
+    }
+    $setAdmin->get('/admin/settings');
+    $setAdmin->post('/admin/settings', ['system__site_name' => '未驗證']);
+    assert_same('/admin/settings', $setAdmin->location());
+    assert_same(null, settingRow('system.site_name'));
+    elevate($setAdmin, '/admin/settings');
     $html = $setAdmin->get('/admin/settings')->body;
     foreach (['system.site_name', 'system.timezone', 'security.single_session', 'security.login_max_failures', 'attachments.quota_mb', 'logs.retention_days', 'search.log_keywords'] as $key) {
         assert_contains('data-setting="' . $key . '"', $html, $key);
     }
     assert_not_contains('data-setting="mail.driver"', $html, '寄信設定在獨立頁面');
-    $setAdmin->post('/admin/settings', ['system__site_name' => '未驗證']);
-    assert_same('/admin/settings', $setAdmin->location());
-    assert_same(null, settingRow('system.site_name'));
 });
 
 test('一般設定：任一欄位不合法時全部不儲存（422）；換行字元被拒絕', function () use (&$setAdmin): void {

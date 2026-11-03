@@ -216,9 +216,10 @@ test('管理後台專案管理：非管理者 404；管理者可看到回收區�
     $web = projectId('網站開發（新版）');
     assert_same(404, signedIn('g1p1')->get('/admin/projects')->status);
     $adminB->get('/admin/projects');
-    assert_contains('回收區', $adminB->body);
+    assert_not_contains('回收區', $adminB->body, '未完成身分驗證前不顯示管理內容');
+    assert_not_contains('網站開發（新版）', $adminB->body);
     elevate($adminB, '/admin/projects');
-    $adminB->get('/admin/projects');
+    assert_contains('回收區', $adminB->get('/admin/projects')->body);
     $adminB->post("/admin/projects/{$web}/restore", []);
     assert_contains('已還原專案', $adminB->get('/admin/projects')->body);
     assert_same(200, signedIn('g1p1')->get("/projects/{$web}")->status, '還原後原本的授權恢復');

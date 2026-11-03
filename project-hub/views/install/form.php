@@ -6,7 +6,7 @@
     <?php else: ?>
       <?php if (!empty($error)): ?><div class="alert alert-danger" role="alert"><?= e($error) ?></div><?php endif; ?>
       <p>此頁會建立資料表與第一位<strong>最高權限管理者</strong>。安裝完成後本頁將永久停用。</p>
-      <form method="post" action="/install" autocomplete="off">
+      <form data-turbo="false" method="post" action="/install" autocomplete="off">
         <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
         <div class="mb-3">
           <label for="install_token" class="form-label">安裝金鑰</label>

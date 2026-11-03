@@ -14,7 +14,7 @@
     <?php else: ?>
       <p class="mb-3" data-recovery-state="ok">救援情境：<strong><?= e($purposeLabel) ?></strong></p>
       <?php if (!empty($error)): ?><div class="alert alert-danger" role="alert"><?= e($error) ?></div><?php endif; ?>
-      <form method="post" action="/recovery/confirm">
+      <form data-turbo="false" method="post" action="/recovery/confirm">
         <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
         <input type="hidden" name="token" value="<?= e($token) ?>">
         <?php if ($purpose === 'reset_password'): ?>

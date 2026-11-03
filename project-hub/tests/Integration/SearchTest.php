@@ -165,6 +165,7 @@ test('重建搜尋索引：舊規則的資料在重建後可被簡繁互搜找�
     assert_same(['数据库运维'], names(searchApi('g1p1', '数据库')['json']), '重建前找不到繁體專案');
 
     $admin = adminLogin();
+    elevate($admin, '/admin/projects');
     $page = $admin->get('/admin/projects')->body;
     assert_contains('搜尋索引需要重建', $page);
     $admin->post('/admin/search-index/rebuild', []);

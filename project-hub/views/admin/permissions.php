@@ -2,6 +2,7 @@
 $active = 'permissions';
 require __DIR__ . '/_nav.php';
 require __DIR__ . '/_reauth.php';
+if (empty($elevated)) { return; } // 未完成身分驗證：只顯示驗證框，不輸出管理內容
 $disabledAttr = empty($elevated) ? ' disabled' : '';
 ?>
 <p class="text-body-secondary small">

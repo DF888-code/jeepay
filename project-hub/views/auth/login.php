@@ -2,7 +2,7 @@
   <div class="card-body p-4">
     <h1 class="h4 mb-4">登入</h1>
     <?php if (!empty($error)): ?><div class="alert alert-danger" role="alert"><?= e($error) ?></div><?php endif; ?>
-    <form method="post" action="/login">
+    <form data-turbo="false" method="post" action="/login">
       <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
       <div class="mb-3">
         <label for="username" class="form-label">帳號</label>

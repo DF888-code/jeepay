@@ -2,7 +2,7 @@
   <div class="card-body p-4">
     <h1 class="h4 mb-3">請變更密碼</h1>
     <p>您目前使用的是管理者提供的臨時密碼，請先設定自己的密碼才能繼續使用系統。</p>
-    <form method="post" action="/account/password-required">
+    <form data-turbo="false" method="post" action="/account/password-required">
       <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
       <div class="mb-3">
         <label for="rp-current" class="form-label">臨時密碼</label>

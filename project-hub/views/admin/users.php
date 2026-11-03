@@ -13,6 +13,7 @@ $disabledAttr = empty($elevated) ? ' disabled' : '';
     <div class="small mt-2">請以安全方式（當面或私訊）交給本人。對方登入後必須先綁定 Google Authenticator，再把臨時密碼改成自己的密碼。離開本頁後將無法再次查看。</div>
   </div>
 <?php endif; ?>
+<?php if (empty($elevated)) { return; } // 未完成身分驗證：只顯示驗證框，不輸出管理內容 ?>
 
 <section class="card shadow-sm mb-4">
   <div class="card-header fw-semibold d-flex justify-content-between align-items-center">

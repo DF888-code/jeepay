@@ -60,7 +60,7 @@ $filterSummary = ($filter['from'] === $filter['to'] ? $filter['from'] : $filter[
       </div>
       <div class="col-12 col-md-auto d-flex gap-2">
         <button type="submit" class="btn btn-primary btn-sm">篩選</button>
-        <a class="btn btn-outline-secondary btn-sm" href="/admin/logs/export?<?= e($queryString) ?>">匯出 CSV</a>
+        <a class="btn btn-outline-secondary btn-sm" href="/admin/logs/export?<?= e($queryString) ?>" data-turbo="false">匯出 CSV</a>
       </div>
     </div>
   </div>

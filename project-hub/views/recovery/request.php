@@ -4,7 +4,7 @@
     <h1 class="h4 mb-3">管理者救援</h1>
     <p class="small text-body-secondary">此功能只提供<strong>最高權限管理者</strong>使用，救援連結會寄到帳號設定的救援 Email。一般員工忘記密碼或遺失手機，請聯絡最高權限管理者重設。</p>
     <?php if (!empty($error)): ?><div class="alert alert-danger" role="alert"><?= e($error) ?></div><?php endif; ?>
-    <form method="post" action="/recovery">
+    <form data-turbo="false" method="post" action="/recovery">
       <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
       <div class="mb-3">
         <label for="rc-account" class="form-label">帳號或救援 Email</label>
