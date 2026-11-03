@@ -168,7 +168,7 @@ final class AdminSettingsController extends AdminController
         }
         $defs = SettingsRegistry::forPage('storage');
         // 用戶端 ID、R2 帳號資訊在各自的表單
-        unset($defs['storage.google_client_id'], $defs['storage.r2_account_id'], $defs['storage.r2_bucket']);
+        unset($defs['storage.google_client_id'], $defs['storage.r2_endpoint'], $defs['storage.r2_bucket']);
         [$values, $errors] = $this->collectDefs($defs, $request);
         if ($errors === [] && $values['attachments.storage'] === GoogleDriveStorage::DRIVER && !$this->drive()->connected()) {
             $errors['attachments.storage'] = '請先完成「連結 Google 帳號」，才能把新附件存到 Google Drive。';
@@ -191,7 +191,25 @@ final class AdminSettingsController extends AdminController
             return $deny;
         }
         $all = SettingsRegistry::definitions();
-        [$values, $errors] = $this->collectDefs(['storage.r2_account_id' => $all['storage.r2_account_id'], 'storage.r2_bucket' => $all['storage.r2_bucket']], $request);
+        // 管理者通常直接貼上 Cloudflare 顯示的「S3 API」網址（結尾帶 bucket 名稱），在此拆成端點與 bucket
+        [$endpoint, $pathBucket] = R2Storage::splitEndpoint($request->input(self::field('storage.r2_endpoint')));
+        $bucket = strtolower(trim($request->input(self::field('storage.r2_bucket'))));
+        $errors = [];
+        if ($pathBucket !== '') {
+            if ($bucket === '') {
+                $bucket = $pathBucket;
+            } elseif ($bucket !== $pathBucket) {
+                $errors['storage.r2_bucket'] = "端點網址中的 bucket（{$pathBucket}）與 bucket 欄位（{$bucket}）不同，請確認。";
+            }
+        }
+        $values = ['storage.r2_endpoint' => $endpoint, 'storage.r2_bucket' => $bucket];
+        foreach ($values as $k => $v) {
+            if (!isset($errors[$k]) && Settings::validate($all[$k], $v) === null) {
+                $errors[$k] = $k === 'storage.r2_endpoint'
+                    ? '端點格式不正確，應為 https://（32 碼帳戶 ID）.r2.cloudflarestorage.com，歐盟儲存區為 .eu.r2.cloudflarestorage.com。'
+                    : self::invalidMessage($all[$k]);
+            }
+        }
         $secrets = ['r2_access_key_id' => [R2Storage::ACCESS_KEY, 'R2 Access Key ID'], 'r2_secret_access_key' => [R2Storage::SECRET_KEY, 'R2 Secret Access Key']];
         $newSecrets = [];
         foreach ($secrets as $field => [$key, $label]) {
@@ -206,11 +224,11 @@ final class AdminSettingsController extends AdminController
             $newSecrets[$key] = [$v, $label];
         }
         $usage = (new AttachmentRepository($this->app->db))->usage(R2Storage::DRIVER);
-        $moving = $values['storage.r2_account_id'] !== $this->app->settings->string('storage.r2_account_id')
+        $moving = $values['storage.r2_endpoint'] !== $this->app->settings->string('storage.r2_endpoint')
             || $values['storage.r2_bucket'] !== $this->app->settings->string('storage.r2_bucket');
         if ($errors === [] && $moving && $usage['files'] > 0) {
             // 舊附件存在原本的 bucket；換位置會讓那些檔案全部讀不到
-            $errors['storage.r2_bucket'] = "已有 {$usage['files']} 個附件存放在目前的 R2 bucket，不能更換帳戶 ID 或 bucket。";
+            $errors['storage.r2_bucket'] = "已有 {$usage['files']} 個附件存放在目前的 R2 bucket，不能更換端點或 bucket。";
         }
         if ($errors !== []) {
             return $this->renderStorage($this->currentValues('storage'), $errors, 422);

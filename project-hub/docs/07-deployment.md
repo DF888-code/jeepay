@@ -53,13 +53,13 @@
 
 1. Cloudflare 後台 → R2 物件儲存，第一次使用先啟用 R2；
 2. 建立 bucket（例如 `project-hub-attachments`），**不要開啟公開存取或 r2.dev 網址**；
-3. 在 R2 總覽頁複製「帳戶 ID」；
+3. 進入 bucket →「設定」，複製「S3 API」網址（例如 `https://帳戶ID.r2.cloudflarestorage.com/bucket名稱`）；歐盟儲存區的 bucket 網址為 `…eu.r2.cloudflarestorage.com`，只能從該端點存取，請照實貼上；
 4. 「管理 API 權杖」→ 建立 API 權杖：權限「物件讀取和寫入」、範圍「僅套用至特定 bucket」，複製 Access Key ID 與 Secret Access Key（Secret 只顯示一次）；
-5. 管理後台「系統設定 → 附件儲存位置 → Cloudflare R2」填入並儲存，按「測試連線」；
+5. 管理後台「系統設定 → 附件儲存位置 → Cloudflare R2」把 S3 API 網址貼到「S3 API 端點」（結尾帶 bucket 名稱會自動拆開），填入兩把金鑰並儲存，按「測試連線」；
 6. 成功後把「新上傳附件的儲存位置」改為 Cloudflare R2；
 7. 驗收：上傳圖片與 PDF，確認可預覽與下載；在 Cloudflare 後台的 bucket 中會看到 64 碼隨機名稱的物件。
 
-已有附件存在 R2 時，系統不允許更換帳戶 ID 或 bucket（舊檔會讀不到）。
+已有附件存在 R2 時，系統不允許更換端點或 bucket（舊檔會讀不到）。端點只接受 Cloudflare R2 官方網址格式（一般、`eu`、`fedramp` 儲存區），避免伺服器被設定去連線其他網址。
 
 ## 2.2 設定寄信（v0.9.0 起）
 

@@ -47,7 +47,8 @@ $labels = ['local' => '本機（InfinityFree）', 'google_drive' => 'Google Driv
         <li>登入 Cloudflare 後台，左側選「R2 物件儲存」（R2 Object Storage）。第一次使用需要先啟用 R2（會要求綁定付款方式，免費額度內不收費）。</li>
         <li>按「建立 bucket」（Create bucket），名稱例如 <code>project-hub-attachments</code>，位置選「自動」。<br>
           <strong>不要開啟「公開存取」或 r2.dev 網址</strong>：檔案必須只能經由本平台檢查權限後開啟。</li>
-        <li>回到 R2 總覽頁，右側可看到「帳戶 ID」（Account ID，32 個英數字），複製下來。</li>
+        <li>進入剛建立的 bucket →「設定」（Settings），複製「S3 API」網址（例如 <code>https://帳戶ID.r2.cloudflarestorage.com/project-hub-attachments</code>）。<br>
+          建立 bucket 時若選了歐盟（EU）儲存區，網址會是 <code>…eu.r2.cloudflarestorage.com</code>，請照實貼上；這類 bucket 只能從專屬端點存取。</li>
         <li>在 R2 總覽頁選「管理 API 權杖」（Manage API tokens）→「建立 API 權杖」：
           <ul>
             <li>權限選「物件讀取和寫入」（Object Read &amp; Write）；</li>
@@ -55,7 +56,7 @@ $labels = ['local' => '本機（InfinityFree）', 'google_drive' => 'Google Driv
             <li>建立後會顯示 <strong>Access Key ID</strong> 與 <strong>Secret Access Key</strong>，Secret 只會顯示這一次，請立即複製。</li>
           </ul>
         </li>
-        <li>把帳戶 ID、bucket 名稱與兩把金鑰填到下方並儲存，再按「測試連線」。</li>
+        <li>把 S3 API 網址貼到「S3 API 端點」（網址結尾帶 bucket 名稱也可以，系統會自動填入 bucket 欄位），再填入兩把金鑰並儲存，最後按「測試連線」。</li>
         <li>測試成功後，在本頁最下方把「新上傳附件的儲存位置」改為 Cloudflare R2。</li>
       </ol>
       <p class="small text-body-secondary mb-0">金鑰以加密方式保存，儲存後不會再顯示。API 權杖只開放單一 bucket 的物件讀寫，即使外洩也無法存取帳號內其他資料。</p>
@@ -63,7 +64,7 @@ $labels = ['local' => '本機（InfinityFree）', 'google_drive' => 'Google Driv
     <form method="post" action="/admin/settings/storage/r2" class="row g-2 align-items-start">
       <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
       <div class="col-12 col-lg-6">
-        <?php $key = 'storage.r2_account_id'; $def = $defs[$key]; require __DIR__ . '/_setting_field.php'; ?>
+        <?php $key = 'storage.r2_endpoint'; $def = $defs[$key]; require __DIR__ . '/_setting_field.php'; ?>
       </div>
       <div class="col-12 col-lg-6">
         <?php $key = 'storage.r2_bucket'; $def = $defs[$key]; require __DIR__ . '/_setting_field.php'; ?>

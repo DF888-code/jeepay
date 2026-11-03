@@ -43,7 +43,7 @@ final class R2Storage implements FileStorage
     /** 帳號 ID、bucket、兩把金鑰都已設定 */
     public function configured(): bool
     {
-        return $this->settings->string('storage.r2_account_id') !== '' && $this->settings->string('storage.r2_bucket') !== ''
+        return $this->settings->string('storage.r2_endpoint') !== '' && $this->settings->string('storage.r2_bucket') !== ''
             && $this->secrets->has(self::ACCESS_KEY) && $this->secrets->has(self::SECRET_KEY);
     }
 
@@ -123,14 +123,15 @@ final class R2Storage implements FileStorage
      */
     private function request(string $method, string $key, string $body, array $headers = [], ?string $sink = null): array
     {
-        $account = $this->settings->string('storage.r2_account_id');
+        $endpoint = $this->settings->string('storage.r2_endpoint');
         $bucket = $this->settings->string('storage.r2_bucket');
         $access = $this->secrets->get(self::ACCESS_KEY);
         $secret = $this->secrets->get(self::SECRET_KEY);
-        if ($account === '' || $bucket === '' || $access === null || $secret === null) {
+        if ($endpoint === '' || $bucket === '' || $access === null || $secret === null) {
             throw new DriveException('尚未完成 Cloudflare R2 設定');
         }
-        $base = $this->endpoints['r2'] ?? "https://{$account}.r2.cloudflarestorage.com";
+        // 歐盟等指定儲存區的 bucket 只能從該儲存區的端點存取，因此端點由管理者填寫，不由帳戶 ID 推算
+        $base = $this->endpoints['r2'] ?? $endpoint;
         $url = rtrim($base, '/') . '/' . rawurlencode($bucket) . '/' . rawurlencode($key);
         $signed = (new S3Signer($access, $secret))->sign($method, $url, $headers, hash('sha256', $body), Clock::now());
         $lines = [];
@@ -142,6 +143,22 @@ final class R2Storage implements FileStorage
         } catch (RuntimeException $e) {
             throw new DriveException($e->getMessage());
         }
+    }
+
+    /**
+     * 拆解管理者貼上的 S3 API 網址：「https://帳戶ID.r2.cloudflarestorage.com/bucket」→ [端點, bucket]。
+     *
+     * @return array{0:string, 1:string} 格式不符時端點為原字串（交由格式檢查回報錯誤）
+     */
+    public static function splitEndpoint(string $input): array
+    {
+        $input = trim($input);
+        $parts = parse_url($input);
+        if (!is_array($parts) || ($parts['scheme'] ?? '') !== 'https' || !isset($parts['host']) || isset($parts['port']) || isset($parts['user'])) {
+            return [$input, ''];
+        }
+        $segments = array_values(array_filter(explode('/', (string)($parts['path'] ?? '')), static fn(string $s): bool => $s !== ''));
+        return ['https://' . strtolower((string)$parts['host']), strtolower(rawurldecode($segments[0] ?? ''))];
     }
 
     /** @param array{status:int, body:string} $res */

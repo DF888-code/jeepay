@@ -28,12 +28,12 @@ test('R2 設定：格式錯誤時不儲存；金鑰加密保存、不回顯；�
     assert_same(422, $r2Admin->status);
     assert_contains('請先完成 Cloudflare R2 設定', $r2Admin->body);
 
-    $r2Admin->post('/admin/settings/storage/r2', ['storage__r2_account_id' => 'not-hex', 'storage__r2_bucket' => 'Bad_Bucket', 'r2_access_key_id' => 'r2-test-access']);
+    $r2Admin->post('/admin/settings/storage/r2', ['storage__r2_endpoint' => 'https://evil.example.com', 'storage__r2_bucket' => 'Bad_Bucket', 'r2_access_key_id' => 'r2-test-access']);
     assert_same(422, $r2Admin->status);
     assert_same(null, secretRow('r2.access_key_id'));
 
     $r2Admin->post('/admin/settings/storage/r2', [
-        'storage__r2_account_id' => str_repeat('a1', 16), 'storage__r2_bucket' => 'ph-bucket',
+        'storage__r2_endpoint' => 'https://' . str_repeat('a1', 16) . '.r2.cloudflarestorage.com', 'storage__r2_bucket' => 'ph-bucket',
         'r2_access_key_id' => 'r2testaccess', 'r2_secret_access_key' => 'r2testsecret',
     ]);
     assert_same('/admin/settings/storage', $r2Admin->location());
@@ -45,10 +45,28 @@ test('R2 設定：格式錯誤時不儲存；金鑰加密保存、不回顯；�
     assert_true((int)ctx()['pdo']->query("SELECT COUNT(*) FROM activity_logs WHERE detail LIKE '%r2testsecret%' OR detail LIKE '%r2testaccess%'")->fetchColumn() === 0, '金鑰不入紀錄');
 });
 
+test('R2 端點：貼上含 bucket 的 S3 API 網址會自動拆開；接受歐盟儲存區；拒絕非 Cloudflare 的網址', function () use (&$r2Admin): void {
+    $acct = str_repeat('b2', 16);
+    $r2Admin->get('/admin/settings/storage');
+    $r2Admin->post('/admin/settings/storage/r2', ['storage__r2_endpoint' => "https://{$acct}.eu.r2.cloudflarestorage.com/eu-bucket/", 'storage__r2_bucket' => '']);
+    assert_same('/admin/settings/storage', $r2Admin->location());
+    assert_same(json_encode("https://{$acct}.eu.r2.cloudflarestorage.com"), settingRow('storage.r2_endpoint'));
+    assert_same('"eu-bucket"', settingRow('storage.r2_bucket'), '從網址取出 bucket');
+    foreach (['http://' . $acct . '.r2.cloudflarestorage.com', 'https://' . $acct . '.r2.cloudflarestorage.com.evil.example', 'https://127.0.0.1', 'https://' . $acct . '.r2.cloudflarestorage.com:8443', 'https://x@' . $acct . '.r2.cloudflarestorage.com'] as $bad) {
+        $r2Admin->get('/admin/settings/storage');
+        $r2Admin->post('/admin/settings/storage/r2', ['storage__r2_endpoint' => $bad, 'storage__r2_bucket' => 'ph-bucket']);
+        assert_same(422, $r2Admin->status, $bad);
+        assert_contains('端點格式不正確', $r2Admin->body, $bad);
+    }
+    $r2Admin->get('/admin/settings/storage');
+    $r2Admin->post('/admin/settings/storage/r2', ['storage__r2_endpoint' => "https://{$acct}.r2.cloudflarestorage.com/one", 'storage__r2_bucket' => 'two']);
+    assert_contains('與 bucket 欄位（two）不同', $r2Admin->body);
+});
+
 test('R2 測試連線：Access Key 或 Secret 錯誤時顯示原因；正確時寫入、讀回、刪除都成功', function () use (&$r2Admin): void {
     $save = function (string $access, string $secret) use (&$r2Admin): void {
         $r2Admin->get('/admin/settings/storage');
-        $r2Admin->post('/admin/settings/storage/r2', ['storage__r2_account_id' => str_repeat('a1', 16), 'storage__r2_bucket' => 'ph-bucket',
+        $r2Admin->post('/admin/settings/storage/r2', ['storage__r2_endpoint' => 'https://' . str_repeat('a1', 16) . '.r2.cloudflarestorage.com', 'storage__r2_bucket' => 'ph-bucket',
             'r2_access_key_id' => $access, 'r2_secret_access_key' => $secret]);
         $r2Admin->get('/admin/settings/storage');
         $r2Admin->post('/admin/settings/storage/r2/test', []);
@@ -93,9 +111,9 @@ test('R2 附件：上傳存到 R2（隨機名稱、主機不留副本），經 P
 
 test('R2：已有附件時不能更換 bucket；切回本機後 R2 舊檔仍可讀取', function () use (&$r2Admin, &$r2FileId): void {
     $r2Admin->get('/admin/settings/storage');
-    $r2Admin->post('/admin/settings/storage/r2', ['storage__r2_account_id' => str_repeat('a1', 16), 'storage__r2_bucket' => 'another-bucket']);
+    $r2Admin->post('/admin/settings/storage/r2', ['storage__r2_endpoint' => 'https://' . str_repeat('a1', 16) . '.r2.cloudflarestorage.com', 'storage__r2_bucket' => 'another-bucket']);
     assert_same(422, $r2Admin->status);
-    assert_contains('不能更換帳戶 ID 或 bucket', $r2Admin->body);
+    assert_contains('不能更換端點或 bucket', $r2Admin->body);
     $r2Admin->get('/admin/settings/storage');
     $r2Admin->post('/admin/settings/storage', ['attachments__storage' => 'local', 'attachments__drive_quota_mb' => '10240', 'attachments__r2_quota_mb' => '9216']);
     assert_same(null, settingRow('attachments.storage'));

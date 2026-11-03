@@ -153,9 +153,10 @@ final class SettingsRegistry
                 'default' => 9216, 'min' => 100, 'max' => 2097152,
                 'help' => 'R2 免費額度為每月 10 GB 儲存空間；超過會開始計費，預設留 1 GB 緩衝。',
             ],
-            'storage.r2_account_id' => [
-                'category' => 'storage', 'page' => 'storage', 'label' => 'Cloudflare 帳戶 ID（Account ID）', 'type' => 'string', 'default' => '',
-                'max' => 32, 'format' => 'hex32', 'help' => '32 個英數字，在 R2 總覽頁右側可以找到。',
+            'storage.r2_endpoint' => [
+                'category' => 'storage', 'page' => 'storage', 'label' => 'S3 API 端點（Endpoint）', 'type' => 'string', 'default' => '',
+                'max' => 120, 'format' => 'r2endpoint',
+                'help' => '在 bucket 的「設定」頁可複製「S3 API」網址，例如 https://帳戶ID.r2.cloudflarestorage.com；歐盟儲存區為 https://帳戶ID.eu.r2.cloudflarestorage.com。網址結尾帶有 bucket 名稱也可以，系統會自動分開。',
             ],
             'storage.r2_bucket' => [
                 'category' => 'storage', 'page' => 'storage', 'label' => 'R2 bucket 名稱', 'type' => 'string', 'default' => '',

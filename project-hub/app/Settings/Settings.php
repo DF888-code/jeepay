@@ -103,7 +103,8 @@ final class Settings
             'email' => filter_var($value, FILTER_VALIDATE_EMAIL) !== false,
             'host' => (bool)preg_match('/^[A-Za-z0-9]([A-Za-z0-9.-]{0,251}[A-Za-z0-9])?$/', $value),
             'google_client_id' => (bool)preg_match('/^[A-Za-z0-9._-]{10,200}$/', $value),
-            'hex32' => (bool)preg_match('/^[a-f0-9]{32}$/', $value),
+            // 只接受 Cloudflare R2 的官方端點（一般、歐盟、FedRAMP 儲存區），避免被填入任意網址讓伺服器去連線
+            'r2endpoint' => (bool)preg_match('#^https://[a-f0-9]{32}(\.(eu|fedramp))?\.r2\.cloudflarestorage\.com$#', $value),
             'bucket' => (bool)preg_match('/^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$/', $value),
             default => false,
         };
