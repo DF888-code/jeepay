@@ -39,7 +39,7 @@ final class RecoveryController extends Controller
 
     public function showRequest(Request $request): Response
     {
-        return $this->render('recovery/request', ['title' => '管理者救援', 'purposes' => self::PURPOSE_LABELS, 'old' => []]);
+        return $this->render('recovery/request', ['title' => '帳號協助', 'purposes' => self::PURPOSE_LABELS, 'old' => []]);
     }
 
     public function request(Request $request): Response
@@ -48,7 +48,7 @@ final class RecoveryController extends Controller
         $purpose = $request->input('purpose');
         if ($identifier === '' || mb_strlen($identifier) > 254 || !isset(self::PURPOSE_LABELS[$purpose])) {
             return $this->render('recovery/request', [
-                'title' => '管理者救援', 'purposes' => self::PURPOSE_LABELS,
+                'title' => '帳號協助', 'purposes' => self::PURPOSE_LABELS,
                 'old' => ['purpose' => $purpose], 'error' => '請輸入帳號或 Email，並選擇救援情境。',
             ], 422);
         }
@@ -185,7 +185,7 @@ final class RecoveryController extends Controller
         $lines = [
             "{$user['display_name']} 您好：",
             '',
-            "有人在 {$site} 申請最高權限管理者救援：" . self::PURPOSE_LABELS[$purpose] . '。',
+            "有人在 {$site} 申請帳號救援：" . self::PURPOSE_LABELS[$purpose] . '。',
             '申請時間：' . Clock::display(Clock::utc($now), $tz, 'Y-m-d H:i') . "（{$tz}）",
             '申請來源 IP：' . $ip,
             '',
@@ -199,7 +199,7 @@ final class RecoveryController extends Controller
         $lines[] = '';
         $lines[] = '若不是您本人申請，請忽略此信，您的帳號不會有任何變更。';
         try {
-            $this->app->mailer()->send(new Message((string)$user['email'], "【{$site}】管理者救援連結", implode("\n", $lines)));
+            $this->app->mailer()->send(new Message((string)$user['email'], "【{$site}】帳號救援連結", implode("\n", $lines)));
             $this->logSecurity('recovery.request', Log::RESULT_SUCCESS, (int)$user['id'], (string)$user['username'], self::PURPOSE_LABELS[$purpose] . '：已寄出救援信');
         } catch (MailException $e) {
             // 寄不出去的連結作廢；錯誤原因只給管理紀錄（不含 Token）
@@ -217,7 +217,7 @@ final class RecoveryController extends Controller
             . '完成時間：' . Clock::display(Clock::utc(), $tz, 'Y-m-d H:i') . "（{$tz}）\n來源 IP：{$ip}\n\n"
             . "所有裝置的登入狀態都已失效。若這不是您本人的操作，請立即檢查信箱安全並重新救援。";
         try {
-            $this->app->mailer()->send(new Message((string)$user['email'], "【{$site}】管理者救援已完成", $text));
+            $this->app->mailer()->send(new Message((string)$user['email'], "【{$site}】帳號救援已完成", $text));
         } catch (Throwable $e) {
             error_log('[project-hub] 救援完成通知寄送失敗：' . $e->getMessage());
         }
@@ -238,7 +238,7 @@ final class RecoveryController extends Controller
                 $user === null ? '(未知帳號)' : (string)$user['username'], $reasons[$state] ?? $state);
         }
         $response = $this->render('recovery/confirm', [
-            'title' => '管理者救援',
+            'title' => '帳號協助',
             'state' => $state,
             'token' => $state === 'ok' ? $token : '',
             'purpose' => $row['purpose'] ?? '',

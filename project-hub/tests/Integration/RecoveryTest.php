@@ -74,7 +74,23 @@ function reEnroll(string $password): void
 test('準備：使用假 Brevo 寄信、清除登入節流紀錄', function (): void {
     useBrevo();
     ctx()['pdo']->exec('DELETE FROM login_attempts');
-    assert_contains('href="/recovery"', browser()->get('/login')->body, '登入頁有救援入口');
+    // 登入頁平常不顯示救援入口；任何帳號（含不存在、一般員工、管理者）輸入錯誤後都顯示同樣的協助說明，無法藉此判斷誰是管理者
+    assert_not_contains('href="/recovery"', browser()->get('/login')->body, '登入頁平常不顯示救援入口');
+    $helpBlocks = [];
+    foreach (['nobody-at-all', 'g1p1', ADMIN_USER] as $who) {
+        $b = browser();
+        $b->submit('/login', '/login', ['username' => $who, 'password' => 'definitely-wrong']);
+        assert_true((bool)preg_match('#<div class="small mt-3 mb-0 border-top pt-3" data-login-help>.*?</div>#s', $b->body, $m), "{$who} 輸入錯誤後顯示協助說明");
+        $helpBlocks[] = $m[0];
+    }
+    assert_same(1, count(array_unique($helpBlocks)), '所有帳號看到的內容完全相同');
+    $t = browser();
+    $t->submit('/login', '/login', ['username' => 'g1p1', 'password' => 'Matrix-Pass-001']);
+    assert_same('/login/totp', $t->location());
+    assert_not_contains('href="/recovery"', $t->get('/login/totp')->body, '2FA 頁平常不顯示');
+    $t->post('/login/totp', ['code' => '000000']);
+    assert_contains('href="/recovery"', $t->body, '驗證碼錯誤後也顯示');
+    ctx()['pdo']->exec('DELETE FROM login_attempts');
     assert_same(200, browser()->get('/recovery')->status);
 });
 
@@ -135,7 +151,7 @@ test('忘記密碼：驗證碼錯誤或新密碼不合規定時不變更；正�
     assert_true(tokenRow($token)['used_at'] !== null);
     assert_contains('密碼已重設', $b->get('/login')->body);
     assert_same('/login', $loggedIn->get('/')->location(), '原本登入中的裝置立即失效');
-    assert_contains('管理者救援已完成', (string)lastMail()['subject'], '寄送完成通知');
+    assert_contains('帳號救援已完成', (string)lastMail()['subject'], '寄送完成通知');
 
     $old = browser();
     $old->submit('/login', '/login', ['username' => ADMIN_USER, 'password' => ADMIN_PASS_NEW]);

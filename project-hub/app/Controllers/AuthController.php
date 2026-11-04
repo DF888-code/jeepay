@@ -43,7 +43,7 @@ final class AuthController extends Controller
 
         if ($this->app->throttle->isLocked($key, $request->ip())) {
             $this->app->logger->log('auth', 'login.failure', Log::RESULT_DENIED, $actorId, $actorLabel, '嘗試次數過多，暫時鎖定');
-            return $this->render('auth/login', ['title' => '登入', 'username' => $username, 'error' => self::LOCKED_ERROR], 429);
+            return $this->render('auth/login', ['title' => '登入', 'username' => $username, 'error' => self::LOCKED_ERROR, 'showHelp' => true], 429);
         }
 
         $passwordOk = Passwords::verify($password, $user === null ? null : (string)$user['password_hash']);
@@ -51,7 +51,7 @@ final class AuthController extends Controller
             $this->app->throttle->record($key, $request->ip(), LoginThrottle::STAGE_PASSWORD, false);
             $reason = $user === null ? '帳號不存在' : (!$passwordOk ? '密碼錯誤' : '帳號已停用');
             $this->app->logger->log('auth', 'login.failure', Log::RESULT_FAILURE, $actorId, $actorLabel, $reason);
-            return $this->render('auth/login', ['title' => '登入', 'username' => $username, 'error' => self::GENERIC_LOGIN_ERROR], 401);
+            return $this->render('auth/login', ['title' => '登入', 'username' => $username, 'error' => self::GENERIC_LOGIN_ERROR, 'showHelp' => true], 401);
         }
 
         $this->app->throttle->record($key, $request->ip(), LoginThrottle::STAGE_PASSWORD, true);
@@ -87,7 +87,7 @@ final class AuthController extends Controller
         if ($step === null || !$this->app->users->consumeTotpStep($id, $step)) {
             $this->app->throttle->record($key, $request->ip(), LoginThrottle::STAGE_TOTP, false);
             $this->app->logger->log('auth', 'login.failure', Log::RESULT_FAILURE, $id, (string)$user['username'], '2FA 驗證碼錯誤或重複使用');
-            return $this->render('auth/totp', ['title' => '兩步驟驗證', 'error' => '驗證碼錯誤或已使用過，請輸入驗證器上的最新驗證碼。'], 401);
+            return $this->render('auth/totp', ['title' => '兩步驟驗證', 'error' => '驗證碼錯誤或已使用過，請輸入驗證器上的最新驗證碼。', 'showHelp' => true], 401);
         }
 
         $this->app->throttle->record($key, $request->ip(), LoginThrottle::STAGE_TOTP, true);

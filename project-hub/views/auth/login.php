@@ -14,7 +14,7 @@
       </div>
       <button type="submit" class="btn btn-primary w-100">下一步</button>
     </form>
-    <p class="text-body-secondary small mt-3 mb-0">登入需要密碼與 Google Authenticator 驗證碼。忘記密碼或遺失手機請聯絡最高權限管理者。</p>
-    <p class="small mt-2 mb-0"><a href="/recovery">最高權限管理者救援（忘記密碼／遺失驗證器）</a></p>
+    <p class="text-body-secondary small mt-3 mb-0">登入需要密碼與 Google Authenticator 驗證碼。</p>
+    <?php require __DIR__ . '/_help.php'; ?>
   </div>
 </div>

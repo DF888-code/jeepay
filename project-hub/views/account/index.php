@@ -82,7 +82,7 @@
     <section class="card shadow-sm mt-4" data-recovery-settings>
       <div class="card-header fw-semibold">Email 救援設定</div>
       <div class="card-body">
-        <p class="small text-body-secondary">忘記密碼或遺失驗證器時，可在登入頁點「最高權限管理者救援」，系統會把救援連結寄到這個 Email。請使用只有您能存取、且開啟兩步驟驗證的信箱。</p>
+        <p class="small text-body-secondary">忘記密碼或遺失驗證器時，開啟 <code>/recovery</code>（建議存成書籤；登入輸入錯誤後頁面上也會出現「申請帳號協助」連結），系統會把救援連結寄到這個 Email。請使用只有您能存取、且開啟兩步驟驗證的信箱。</p>
         <p class="mb-2">目前救援 Email：<strong><?= ($user['email'] ?? '') !== '' ? e($user['email']) : '尚未設定' ?></strong></p>
         <?php if (empty($baseUrlSet)): ?>
           <div class="alert alert-warning small py-2">config.php 尚未設定 <code>base_url</code>，為了安全，救援信不會寄出。</div>

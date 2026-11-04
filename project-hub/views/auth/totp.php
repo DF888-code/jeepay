@@ -11,5 +11,6 @@
       </div>
       <button type="submit" class="btn btn-primary w-100">驗證並登入</button>
     </form>
+    <?php require __DIR__ . '/_help.php'; ?>
   </div>
 </div>

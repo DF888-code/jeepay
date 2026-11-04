@@ -1,7 +1,7 @@
 <?php use ProjectHub\Support\Clock; ?>
 <div class="card shadow-sm auth-card">
   <div class="card-body p-4">
-    <h1 class="h4 mb-3">管理者救援</h1>
+    <h1 class="h4 mb-3">帳號協助</h1>
     <?php if ($state === 'cooling'): ?>
       <div class="alert alert-warning" role="status" data-recovery-state="cooling">
         為了安全，「<?= e($purposeLabel) ?>」的救援連結需要等待一段時間才能使用。<br>

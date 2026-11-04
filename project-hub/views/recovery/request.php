@@ -1,8 +1,8 @@
 <?php $old = $old ?? []; ?>
 <div class="card shadow-sm auth-card">
   <div class="card-body p-4">
-    <h1 class="h4 mb-3">管理者救援</h1>
-    <p class="small text-body-secondary">此功能只提供<strong>最高權限管理者</strong>使用，救援連結會寄到帳號設定的救援 Email。一般員工忘記密碼或遺失手機，請聯絡最高權限管理者重設。</p>
+    <h1 class="h4 mb-3">帳號協助</h1>
+    <p class="small text-body-secondary">輸入帳號或 Email 並選擇情況。若符合使用條件，系統會寄出一封含連結的信；若沒有收到信，請聯絡系統管理者協助。</p>
     <?php if (!empty($error)): ?><div class="alert alert-danger" role="alert"><?= e($error) ?></div><?php endif; ?>
     <form data-turbo="false" method="post" action="/recovery">
       <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
