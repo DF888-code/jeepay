@@ -55,7 +55,8 @@ final class RecoveryController extends Controller
 
         $ip = $request->ip();
         $key = $this->app->throttle->accountKey($identifier);
-        $limited = $this->limited($key, $ip);
+        // IP 已被暫時封鎖（例如連續猜帳號）時同樣不寄信，畫面回應不變
+        $limited = $this->limited($key, $ip) || $this->app->throttle->isLocked($key, $ip);
         // 申請紀錄以「成功」寫入：只用來計算申請頻率，不能影響登入失敗鎖定
         $this->app->throttle->record($key, $ip, self::STAGE_REQUEST, true);
 

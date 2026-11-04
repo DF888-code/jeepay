@@ -263,3 +263,46 @@ test('系統錯誤紀錄：錯誤頁的追蹤代碼可在管理後台查到原�
     $files = glob(ctx()['storage'] . '/logs/errors-*.log') ?: [];
     assert_same(1, count($files), '寫在 storage/logs');
 });
+
+test('猜帳號封鎖：同一 IP 輸入不存在的帳號達 5 次，暫時封鎖該 IP 的所有登入（含正確帳號）與救援申請', function (): void {
+    $pdo = ctx()['pdo'];
+    $pdo->exec('DELETE FROM login_attempts');
+    $guess = function (string $user): Browser {
+        $b = browser();
+        $b->submit('/login', '/login', ['username' => $user, 'password' => 'guess-' . $user]);
+        return $b;
+    };
+    for ($i = 1; $i <= 4; $i++) {
+        assert_same(401, $guess("ghost{$i}")->status, "第 {$i} 次");
+    }
+    // 4 次時尚未封鎖：正確帳號仍可登入
+    $ok = browser();
+    $ok->submit('/login', '/login', ['username' => ADMIN_USER, 'password' => ADMIN_PASS_NEW]);
+    assert_same('/login/totp', $ok->location(), '未達上限前不影響正常登入');
+
+    assert_same(401, $guess('ghost5')->status, '第 5 次仍回一般錯誤訊息');
+    $blocked = browser();
+    $blocked->submit('/login', '/login', ['username' => ADMIN_USER, 'password' => ADMIN_PASS_NEW]);
+    assert_same(429, $blocked->status, '達上限後，同一 IP 連正確帳號也暫時不能登入');
+    assert_contains('嘗試次數過多', $blocked->body);
+    $log = $pdo->query("SELECT ip, detail FROM activity_logs WHERE action = 'login.ip_locked' ORDER BY id DESC LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+    assert_true(is_array($log) && $log['ip'] === '127.0.0.1', '留下封鎖紀錄（含 IP）');
+    assert_contains('連續 5 次輸入不存在的帳號', (string)$log['detail']);
+    assert_same(1, (int)$pdo->query("SELECT COUNT(*) FROM activity_logs WHERE action = 'login.ip_locked'")->fetchColumn(), '只在達到上限時記錄一次');
+
+    // 封鎖期間救援申請也不寄信（畫面回應不變）
+    useBrevo();
+    $before = mailCount();
+    $r = browser();
+    $r->get('/recovery');
+    $r->post('/recovery', ['account' => ADMIN_USER, 'purpose' => 'reset_password']);
+    assert_same('/recovery', $r->location());
+    assert_same($before, mailCount());
+
+    // 鎖定時間過後（以刪除紀錄模擬）恢復
+    $pdo->exec('DELETE FROM login_attempts');
+    $again = browser();
+    $again->submit('/login', '/login', ['username' => ADMIN_USER, 'password' => ADMIN_PASS_NEW]);
+    assert_same('/login/totp', $again->location());
+    $pdo->exec('DELETE FROM login_attempts');
+});

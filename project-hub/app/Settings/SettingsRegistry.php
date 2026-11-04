@@ -47,6 +47,11 @@ final class SettingsRegistry
                 'category' => 'security', 'label' => '同一 IP 失敗上限', 'type' => 'int', 'default' => 30,
                 'min' => 5, 'max' => 500,
             ],
+            'security.login_unknown_max' => [
+                'category' => 'security', 'label' => '同一 IP 輸入不存在帳號的上限', 'type' => 'int', 'default' => 5,
+                'min' => 3, 'max' => 50,
+                'help' => '同一 IP 在鎖定時間內輸入不存在的帳號達此次數，就暫時封鎖該 IP 的所有登入（含正確帳號），用來阻擋猜帳號的行為。',
+            ],
             'security.login_lock_minutes' => [
                 'category' => 'security', 'label' => '鎖定時間（分鐘）', 'type' => 'int', 'default' => 15,
                 'min' => 1, 'max' => 1440,

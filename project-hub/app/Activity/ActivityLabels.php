@@ -10,6 +10,7 @@ final class ActivityLabels
     private const ACTIONS = [
         'login.success' => '登入成功',
         'login.failure' => '登入失敗',
+        'login.ip_locked' => '暫時封鎖 IP',
         'logout' => '登出',
         '2fa.enroll' => '綁定 2FA',
         '2fa.change' => '更換 2FA',

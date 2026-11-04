@@ -48,9 +48,17 @@ final class AuthController extends Controller
 
         $passwordOk = Passwords::verify($password, $user === null ? null : (string)$user['password_hash']);
         if ($user === null || !$passwordOk || $user['status'] !== 'active') {
-            $this->app->throttle->record($key, $request->ip(), LoginThrottle::STAGE_PASSWORD, false);
+            $this->app->throttle->record($key, $request->ip(), $user === null ? LoginThrottle::STAGE_UNKNOWN : LoginThrottle::STAGE_PASSWORD, false);
             $reason = $user === null ? '帳號不存在' : (!$passwordOk ? '密碼錯誤' : '帳號已停用');
             $this->app->logger->log('auth', 'login.failure', Log::RESULT_FAILURE, $actorId, $actorLabel, $reason);
+            if ($user === null) {
+                $limit = $this->app->settings->int('security.login_unknown_max');
+                if ($this->app->throttle->unknownAccountFailures($request->ip()) === $limit) {
+                    // 剛好達到上限的這一次留下封鎖紀錄（IP 由紀錄本身的欄位保存），供管理者在歷史紀錄查看
+                    $this->app->logger->log('security', 'login.ip_locked', Log::RESULT_DENIED, null, '(未知帳號)',
+                        "同一 IP 連續 {$limit} 次輸入不存在的帳號，暫時封鎖 " . $this->app->settings->int('security.login_lock_minutes') . ' 分鐘');
+                }
+            }
             return $this->render('auth/login', ['title' => '登入', 'username' => $username, 'error' => self::GENERIC_LOGIN_ERROR, 'showHelp' => true], 401);
         }
 

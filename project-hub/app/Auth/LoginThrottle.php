@@ -21,6 +21,8 @@ final class LoginThrottle
     public const STAGE_TOTP = 'totp';
     public const STAGE_REAUTH = 'reauth';
     public const STAGE_RECOVERY = 'recovery';
+    /** 輸入不存在的帳號：另外計數，達上限時封鎖整個 IP（猜帳號的行為） */
+    public const STAGE_UNKNOWN = 'unknown_user';
 
     public function __construct(private Database $db, private Settings $settings, private Crypto $crypto)
     {
@@ -49,11 +51,24 @@ final class LoginThrottle
         if ($accountFailures >= $this->settings->int('security.login_max_failures')) {
             return true;
         }
+        if ($this->unknownAccountFailures($ip, $since) >= $this->settings->int('security.login_unknown_max')) {
+            return true;
+        }
         $ipFailures = (int)$this->db->value(
             'SELECT COUNT(*) FROM login_attempts WHERE ip = ? AND succeeded = 0 AND attempted_at > ?',
             [$ip, $since]
         );
         return $ipFailures >= $this->settings->int('security.login_ip_max_failures');
+    }
+
+    /** 鎖定時間內，此 IP 輸入不存在帳號的次數 */
+    public function unknownAccountFailures(string $ip, ?string $since = null): int
+    {
+        $since ??= Clock::utc(Clock::now() - $this->settings->int('security.login_lock_minutes') * 60);
+        return (int)$this->db->value(
+            'SELECT COUNT(*) FROM login_attempts WHERE ip = ? AND stage = ? AND succeeded = 0 AND attempted_at > ?',
+            [$ip, self::STAGE_UNKNOWN, $since]
+        );
     }
 
     public function record(string $accountKey, string $ip, string $stage, bool $succeeded): void
