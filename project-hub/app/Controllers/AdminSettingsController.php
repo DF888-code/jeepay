@@ -509,6 +509,7 @@ final class AdminSettingsController extends AdminController
             $groups[$def['category']][$key] = $def;
         }
         return $this->render('admin/settings_general', [
+            'scripts' => ['/assets/admin-settings.js'],
             'title' => '系統設定',
             'groups' => $groups,
             'values' => $values,
