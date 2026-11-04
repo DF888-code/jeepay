@@ -1,5 +1,7 @@
 # Project Hub：個人／公司專案管理與知識紀錄平台
 
+> **接手維護請先讀 [docs/10-maintenance-handbook.md](docs/10-maintenance-handbook.md)。**
+
 依據《Claude Code 開發需求規格書 v1.0》開發。
 
 > 本目錄是獨立的 PHP 專案，與所在的 `jeepay`（Java 支付系統）程式碼無任何相依。建議日後移至獨立 Repo（待確認事項 #20）。
@@ -34,6 +36,8 @@
 | [docs/07-deployment.md](docs/07-deployment.md) | InfinityFree 部署步驟、緊急重設、部署安全檢查清單 |
 | [docs/08-note-attachments.md](docs/08-note-attachments.md) | 隨手記檔案與圖片上傳（規格七之一）設計與主機限制 |
 | [docs/09-security-report.md](docs/09-security-report.md) | 安全測試報告（v1.0.0）、修正項目與殘餘風險 |
+| [docs/10-maintenance-handbook.md](docs/10-maintenance-handbook.md) | **維護交接手冊**：架構重點、不可違反的原則、常見修改做法、測試與發佈、主機限制、踩過的坑、機密與備份 |
+| [AGENTS.md](AGENTS.md) | 給 AI 助手（ChatGPT／Codex、Cursor、Claude）的工作規範 |
 
 ## 目錄
 
@@ -66,7 +70,7 @@ PH_TEST_DSN="mysql:host=127.0.0.1;dbname=ph_test;charset=utf8mb4" PH_TEST_USER=p
 php tests/schema_smoke_test.php
 ```
 
-最近一次結果（MariaDB 10.11、PHP 8.3）：單元 17、整合 166（登入 27＋管理後台 23＋專案與雙重授權 17＋說明／關鍵字／隨手記 16＋附件 15＋搜尋 12＋歷史紀錄 10＋系統設定 17＋Email 救援 11＋安全掃描 12＋R2 6）、Schema 26 項，全部通過。整合測試會啟動假的 Google／Brevo／SMTP 服務（`tests/Fakes/`），不需連網。
+最近一次結果（MariaDB 10.11、PHP 8.3）：單元 17、整合 168（登入 27＋管理後台 23＋專案與雙重授權 17＋說明／關鍵字／隨手記 16＋附件 15＋搜尋 12＋歷史紀錄 10＋系統設定 18＋Email 救援 11＋安全掃描 13＋R2 6）、Schema 26 項，全部通過。整合測試會啟動假的 Google／Brevo／SMTP 服務（`tests/Fakes/`），不需連網。
 
 ## 部署
 
