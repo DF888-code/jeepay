@@ -35,6 +35,18 @@ final class SettingsRegistry
                 'category' => 'system', 'label' => '網站名稱', 'type' => 'string', 'default' => '專案管理平台',
                 'max' => 50,
             ],
+            'system.theme_color' => [
+                'category' => 'system', 'label' => '站台顏色', 'type' => 'enum', 'default' => 'default',
+                'options' => [
+                    'default' => '預設（白／灰）', 'blue' => '藍色', 'green' => '綠色', 'teal' => '青色', 'purple' => '紫色',
+                    'pink' => '粉紅色', 'orange' => '橘色', 'yellow' => '黃色', 'red' => '紅色', 'gray' => '深灰色',
+                ],
+                'help' => '同一套系統架設在多個地方時，用不同顏色區分。會改變背景與最上方導覽列的顏色，登入頁也會套用；深色模式會自動改用較深的同色系。',
+            ],
+            'system.site_label' => [
+                'category' => 'system', 'label' => '站台標籤（選填）', 'type' => 'string', 'default' => '', 'max' => 20,
+                'help' => '顯示在網站名稱旁邊的小標籤，例如「測試站」「台北分公司」。留空則不顯示。',
+            ],
             'system.timezone' => [
                 'category' => 'system', 'label' => '顯示時區', 'type' => 'timezone', 'default' => 'Asia/Taipei',
                 'help' => '資料庫一律存 UTC，畫面依此時區顯示；歷史紀錄的上午／下午統計也依此時區計算。',

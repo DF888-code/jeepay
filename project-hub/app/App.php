@@ -334,6 +334,9 @@ final class App
             'appVersion' => trim((string)@file_get_contents($this->basePath . '/VERSION')),
             'timezone' => $this->settings->string('system.timezone'),
             'cspNonce' => $this->cspNonce,
+            // 顏色只能是設定定義中的固定選項（Settings 會驗證），才可以直接組成 CSS class
+            'themeColor' => $this->settings->string('system.theme_color'),
+            'siteLabel' => $this->settings->string('system.site_label'),
         ]);
     }
 

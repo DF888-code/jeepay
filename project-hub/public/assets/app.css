@@ -101,3 +101,53 @@ h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6, .card-header, .alert, .lis
 
 /* 隨手記修改紀錄：桌機三欄等高；手機上下排列時維持內容原本高度，避免與下一欄重疊 */
 @media (min-width: 992px) { .rev-box { height: 100%; } }
+
+/* 站台顏色（系統設定 system.theme_color）：同一套系統架設在多處時用來區分。
+ * 只提供固定選項，不允許自訂色碼，CSP 仍不需要 inline style；深色模式改用深色同色系。 */
+body.theme-blue { background-color: #e7f1ff !important; }
+body.theme-blue .ph-navbar { background-color: #cfe2ff !important; border-bottom: 3px solid #0d6efd !important; }
+body.theme-blue .site-label { background-color: #0d6efd; color: #fff; }
+[data-bs-theme=dark] body.theme-blue { background-color: #0d1b2e !important; }
+[data-bs-theme=dark] body.theme-blue .ph-navbar { background-color: #132a4a !important; }
+body.theme-green { background-color: #e8f5ec !important; }
+body.theme-green .ph-navbar { background-color: #cdebd6 !important; border-bottom: 3px solid #198754 !important; }
+body.theme-green .site-label { background-color: #198754; color: #fff; }
+[data-bs-theme=dark] body.theme-green { background-color: #0e1f15 !important; }
+[data-bs-theme=dark] body.theme-green .ph-navbar { background-color: #163323 !important; }
+body.theme-teal { background-color: #e3f6f5 !important; }
+body.theme-teal .ph-navbar { background-color: #c6ece9 !important; border-bottom: 3px solid #0f8a83 !important; }
+body.theme-teal .site-label { background-color: #0f8a83; color: #fff; }
+[data-bs-theme=dark] body.theme-teal { background-color: #0c1f1e !important; }
+[data-bs-theme=dark] body.theme-teal .ph-navbar { background-color: #123331 !important; }
+body.theme-purple { background-color: #f1eafb !important; }
+body.theme-purple .ph-navbar { background-color: #e0d1f7 !important; border-bottom: 3px solid #6f42c1 !important; }
+body.theme-purple .site-label { background-color: #6f42c1; color: #fff; }
+[data-bs-theme=dark] body.theme-purple { background-color: #1b1328 !important; }
+[data-bs-theme=dark] body.theme-purple .ph-navbar { background-color: #2a1e40 !important; }
+body.theme-pink { background-color: #fcebf3 !important; }
+body.theme-pink .ph-navbar { background-color: #f7d2e4 !important; border-bottom: 3px solid #d63384 !important; }
+body.theme-pink .site-label { background-color: #d63384; color: #fff; }
+[data-bs-theme=dark] body.theme-pink { background-color: #2a1220 !important; }
+[data-bs-theme=dark] body.theme-pink .ph-navbar { background-color: #401b31 !important; }
+body.theme-orange { background-color: #fff1e5 !important; }
+body.theme-orange .ph-navbar { background-color: #ffdcbf !important; border-bottom: 3px solid #e8590c !important; }
+body.theme-orange .site-label { background-color: #e8590c; color: #fff; }
+[data-bs-theme=dark] body.theme-orange { background-color: #2a1a0d !important; }
+[data-bs-theme=dark] body.theme-orange .ph-navbar { background-color: #402714 !important; }
+body.theme-yellow { background-color: #fff9db !important; }
+body.theme-yellow .ph-navbar { background-color: #fff0a8 !important; border-bottom: 3px solid #b58900 !important; }
+body.theme-yellow .site-label { background-color: #b58900; color: #fff; }
+[data-bs-theme=dark] body.theme-yellow { background-color: #262009 !important; }
+[data-bs-theme=dark] body.theme-yellow .ph-navbar { background-color: #3a310e !important; }
+body.theme-red { background-color: #fdecec !important; }
+body.theme-red .ph-navbar { background-color: #f8d0d0 !important; border-bottom: 3px solid #dc3545 !important; }
+body.theme-red .site-label { background-color: #dc3545; color: #fff; }
+[data-bs-theme=dark] body.theme-red { background-color: #2a1012 !important; }
+[data-bs-theme=dark] body.theme-red .ph-navbar { background-color: #40181b !important; }
+body.theme-gray { background-color: #e9ecef !important; }
+body.theme-gray .ph-navbar { background-color: #ced4da !important; border-bottom: 3px solid #495057 !important; }
+body.theme-gray .site-label { background-color: #495057; color: #fff; }
+[data-bs-theme=dark] body.theme-gray { background-color: #16191c !important; }
+[data-bs-theme=dark] body.theme-gray .ph-navbar { background-color: #24292e !important; }
+body.theme-yellow .site-label { color: #212529; }
+.site-label { background-color: var(--bs-secondary); color: #fff; font-size: .7rem; font-weight: 600; }

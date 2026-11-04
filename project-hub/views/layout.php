@@ -30,10 +30,11 @@ $assetVersion = rawurlencode((string)($appVersion ?? ''));
 <script src="/assets/app.js?v=<?= $assetVersion ?>" data-turbo-track="reload"></script>
 <script src="/assets/vendor/turbo-8.0.23/turbo.js" data-turbo-track="reload"></script>
 </head>
-<body class="bg-body-tertiary">
-<nav class="navbar navbar-expand-md bg-body border-bottom">
+<?php $theme = preg_match('/^[a-z]+$/', (string)($themeColor ?? '')) ? (string)$themeColor : 'default'; ?>
+<body class="bg-body-tertiary theme-<?= e($theme) ?>">
+<nav class="navbar navbar-expand-md bg-body border-bottom ph-navbar">
   <div class="container">
-    <a class="navbar-brand fw-semibold" href="/"><?= e($siteName) ?></a>
+    <a class="navbar-brand fw-semibold" href="/"><?= e($siteName) ?><?php if (!empty($siteLabel)): ?> <span class="badge site-label align-middle" data-site-label><?= e($siteLabel) ?></span><?php endif; ?></a>
     <?php if ($stage === 'full' && !empty($currentUser)): ?>
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav" aria-controls="mainNav" aria-expanded="false" aria-label="切換選單">
         <span class="navbar-toggler-icon"></span>

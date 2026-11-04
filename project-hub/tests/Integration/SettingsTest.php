@@ -109,6 +109,7 @@ test('一般設定：儲存後立即生效，紀錄修改前後的值；改回�
             $data[$name] = '1';
         }
         $data['system__timezone'] = 'Asia/Taipei';
+        $data['system__theme_color'] = 'default'; // 下拉選單不在上面的解析範圍
         return $data;
     };
     $data = $current();
@@ -386,4 +387,40 @@ test('設定頁導覽：管理後台出現「系統設定」，三個設定頁�
     foreach (['/admin/settings', '/admin/settings/mail', '/admin/settings/storage'] as $p) {
         assert_same(200, $setAdmin->get($p)->status, $p);
     }
+});
+
+test('站台顏色與標籤：選擇後全站（含登入頁）套用；只接受固定選項；標籤跳脫 HTML', function (): void {
+    $admin = adminLogin();
+    elevate($admin, '/admin/settings');
+    $page = $admin->get('/admin/settings')->body;
+    assert_contains('data-setting="system.theme_color"', $page);
+    assert_contains('class="bg-body-tertiary theme-default"', $page, '預設樣式');
+    preg_match_all('#<input type="(?:text|number|email)"[^>]* name="([a-z_]+)" value="([^"]*)"#', $page, $m, PREG_SET_ORDER);
+    $data = [];
+    foreach ($m as $x) {
+        $data[$x[1]] = html_entity_decode($x[2]);
+    }
+    preg_match_all('#name="([a-z_]+)" value="1" checked#', $page, $c);
+    foreach ($c[1] as $name) {
+        $data[$name] = '1';
+    }
+    $data['system__timezone'] = 'Asia/Taipei';
+
+    $admin->post('/admin/settings', $data + ['system__theme_color' => 'url(evil)']);
+    assert_same(422, $admin->status, '不接受清單以外的值');
+    $admin->get('/admin/settings');
+    $admin->post('/admin/settings', array_merge($data, ['system__theme_color' => 'green', 'system__site_label' => '<b>測試站</b>']));
+    assert_same('/admin/settings', $admin->location());
+    $home = $admin->get('/')->body;
+    assert_contains('class="bg-body-tertiary theme-green"', $home);
+    assert_contains('&lt;b&gt;測試站&lt;/b&gt;', $home, '標籤跳脫 HTML');
+    $login = browser()->get('/login')->body;
+    assert_contains('theme-green', $login, '登入頁也套用，未登入就能分辨站台');
+    assert_contains('data-site-label', $login);
+    assert_contains('body.theme-green', (string)file_get_contents(dirname(__DIR__, 2) . '/public/assets/app.css'));
+
+    $admin->get('/admin/settings');
+    $admin->post('/admin/settings', array_merge($data, ['system__theme_color' => 'default', 'system__site_label' => '']));
+    assert_same(null, settingRow('system.theme_color'));
+    assert_not_contains('data-site-label', browser()->get('/login')->body);
 });
