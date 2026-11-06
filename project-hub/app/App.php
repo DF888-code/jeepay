@@ -24,6 +24,7 @@ use ProjectHub\Controllers\InstallController;
 use ProjectHub\Http\Request;
 use ProjectHub\Http\Response;
 use ProjectHub\Http\Session;
+use ProjectHub\Http\TrustedProxy;
 use ProjectHub\Mail\Mailer;
 use ProjectHub\Settings\SecretSettings;
 use ProjectHub\Settings\Settings;
@@ -197,6 +198,11 @@ final class App
         }
         $this->config = $config;
 
+        // 先載入設定再判斷 HTTPS：網站前面有代理（Cloudflare、阿里雲高防）時，
+        // 使用者 IP 與原始協定要依「使用者 IP 來源」設定判斷（資料庫用到才連線，設定讀取失敗時視為直接連線）
+        $this->boot($request);
+        $request->applyProxy($this->trustedProxy());
+
         if ($config->bool('force_https', true) && !$request->isHttps()) {
             if (!$request->isSafeMethod()) {
                 return Response::html($this->plainPage('需要 HTTPS', '請改用 https:// 連線。'), 400);
@@ -204,7 +210,6 @@ final class App
             return Response::redirect($this->baseUrl() . $request->uri(), 301);
         }
 
-        $this->boot($request);
         $this->session->start(
             $config->string('session_cookie', 'phsid'),
             $request->isHttps(),
@@ -355,6 +360,13 @@ final class App
     public function mailer(): Mailer
     {
         return new Mailer($this->settings, $this->secrets, $this->serviceEndpoints());
+    }
+
+    /** 依系統設定建立「使用者 IP 來源」判斷（設定頁的診斷資訊也使用同一個物件） */
+    public function trustedProxy(): TrustedProxy
+    {
+        [$ranges] = TrustedProxy::parseRanges($this->settings->string('security.trusted_proxy_ranges'));
+        return new TrustedProxy($this->settings->string('security.client_ip_mode'), $ranges, $this->settings->string('security.client_ip_header'));
     }
 
     /** 系統錯誤紀錄（管理後台「系統錯誤」依追蹤代碼查詢） */

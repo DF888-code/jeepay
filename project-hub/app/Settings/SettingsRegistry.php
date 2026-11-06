@@ -20,6 +20,7 @@ final class SettingsRegistry
         'attachments' => '附件',
         'logs' => '歷史紀錄',
         'recovery' => 'Email 救援（最高權限管理者）',
+        'network' => '代理與使用者 IP',
         'search' => '搜尋',
         'mail' => '寄信',
         'storage' => '附件儲存位置',
@@ -114,6 +115,24 @@ final class SettingsRegistry
             'security.password_min_length' => [
                 'category' => 'security', 'label' => '密碼最短長度', 'type' => 'int', 'default' => 10,
                 'min' => 8, 'max' => 64,
+            ],
+            'security.client_ip_mode' => [
+                'category' => 'network', 'label' => '使用者 IP 來源', 'type' => 'enum', 'default' => 'direct',
+                'options' => [
+                    'direct' => '直接連線（沒有使用 CDN 或防護）',
+                    'cloudflare' => 'Cloudflare（採用 CF-Connecting-IP）',
+                    'aliyun' => '阿里雲 DDoS 高防／WAF（採用 X-Forwarded-For）',
+                    'custom' => '其他代理（自訂標頭）',
+                ],
+                'help' => '網站前面有 Cloudflare 或阿里雲高防時，主機看到的連線來源是代理的 IP；不設定會讓「同一 IP 封鎖」一次封鎖所有使用者，歷史紀錄也查不到真實 IP。只有連線來自信任的代理 IP 時才採用標頭，避免被偽造。',
+            ],
+            'security.trusted_proxy_ranges' => [
+                'category' => 'network', 'label' => '信任的代理 IP 段', 'type' => 'string', 'default' => '', 'max' => 4000,
+                'help' => '以逗號或空白分隔，例如 203.0.113.0/24, 198.51.100.0/24。阿里雲與自訂代理必填（阿里雲請貼上主控台的「回源 IP 段」）；Cloudflare 已內建官方 IP 範圍，可留空。',
+            ],
+            'security.client_ip_header' => [
+                'category' => 'network', 'label' => '自訂代理的 IP 標頭', 'type' => 'string', 'default' => '', 'max' => 40, 'format' => 'header',
+                'help' => '只有「其他代理」需要，例如 X-Real-IP、True-Client-IP；留空時使用 X-Forwarded-For。',
             ],
             'recovery.token_minutes' => [
                 'category' => 'recovery', 'label' => '救援連結有效時間（分鐘）', 'type' => 'int', 'default' => 30, 'min' => 10, 'max' => 120,

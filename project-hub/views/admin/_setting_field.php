@@ -44,4 +44,5 @@ $described = !empty($def['help']) || $err !== null ? ' aria-describedby="' . e($
     <div id="<?= e($helpId) ?>" class="<?= $err !== null ? 'invalid-feedback d-block' : 'form-text' ?>"><?= e($err ?? $def['help']) ?><?php if ($err !== null && !empty($def['help'])): ?><span class="d-block text-body-secondary"><?= e($def['help']) ?></span><?php endif; ?></div>
   <?php endif; ?>
   <?php if ($key === 'system.theme_color') { require __DIR__ . '/_theme_preview.php'; } ?>
+  <?php if ($key === 'security.client_ip_mode' && isset($ipDiagnostic)) { require __DIR__ . '/_ip_diagnostic.php'; } ?>
 </div>

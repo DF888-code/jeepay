@@ -81,9 +81,25 @@ final class Request
         return (string)($this->server[$key] ?? '');
     }
 
+    /** @var array{ip:string, remote:string, trusted:bool, header:string, https:bool}|null 代理判斷結果 */
+    private ?array $proxy = null;
+
+    /** 套用「使用者 IP 來源」設定（App 在讀取設定後呼叫一次） */
+    public function applyProxy(TrustedProxy $proxy): void
+    {
+        $this->proxy = $proxy->resolve($this->server);
+    }
+
+    /** @return array{ip:string, remote:string, trusted:bool, header:string, https:bool}|null 供設定頁顯示診斷資訊 */
+    public function proxyResult(): ?array
+    {
+        return $this->proxy;
+    }
+
+    /** 使用者 IP：只有連線來自信任的代理時才採用代理標頭中的 IP（見 TrustedProxy） */
     public function ip(): string
     {
-        return substr((string)($this->server['REMOTE_ADDR'] ?? ''), 0, 45);
+        return $this->proxy['ip'] ?? substr((string)($this->server['REMOTE_ADDR'] ?? ''), 0, 45);
     }
 
     public function userAgent(): string
@@ -93,9 +109,13 @@ final class Request
 
     public function isHttps(): bool
     {
-        // 主機實測 $_SERVER['HTTPS'] 可正確反映 HTTPS，因此不信任任何代理標頭（X-Forwarded-Proto 可被偽造）
+        // 主機實測 $_SERVER['HTTPS'] 可正確反映 HTTPS；代理標頭（X-Forwarded-Proto）可被偽造，只在連線來自信任的代理時採用
         $https = (string)($this->server['HTTPS'] ?? '');
-        return ($https !== '' && strtolower($https) !== 'off') || (string)($this->server['SERVER_PORT'] ?? '') === '443';
+        if (($https !== '' && strtolower($https) !== 'off') || (string)($this->server['SERVER_PORT'] ?? '') === '443') {
+            return true;
+        }
+        // 只有連線來自信任的代理時，才採信代理告知的原始協定（X-Forwarded-Proto）
+        return !empty($this->proxy['trusted']) && !empty($this->proxy['https']);
     }
 
     public function host(): string

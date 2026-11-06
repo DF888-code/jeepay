@@ -14,6 +14,7 @@ use ProjectHub\Attachment\R2Storage;
 use ProjectHub\Attachment\StorageManager;
 use ProjectHub\Http\Request;
 use ProjectHub\Http\Response;
+use ProjectHub\Http\TrustedProxy;
 use ProjectHub\Mail\MailException;
 use ProjectHub\Mail\Message;
 use ProjectHub\Settings\Settings;
@@ -57,6 +58,18 @@ final class AdminSettingsController extends AdminController
             return $deny;
         }
         [$values, $errors] = $this->collect('general', $request);
+        if (!isset($errors['security.trusted_proxy_ranges']) && isset($values['security.trusted_proxy_ranges'])) {
+            [$ranges, $rangeError] = TrustedProxy::parseRanges((string)$values['security.trusted_proxy_ranges']);
+            $mode = (string)($values['security.client_ip_mode'] ?? 'direct');
+            if ($rangeError !== null) {
+                $errors['security.trusted_proxy_ranges'] = $rangeError;
+            } elseif (in_array($mode, ['aliyun', 'custom'], true) && $ranges === []) {
+                // 沒有信任的 IP 段就無法分辨標頭是否來自代理，等於任何人都能偽造 IP
+                $errors['security.trusted_proxy_ranges'] = '選擇阿里雲或其他代理時，必須填寫信任的代理 IP 段（阿里雲請到主控台複製「回源 IP 段」）。';
+            } else {
+                $values['security.trusted_proxy_ranges'] = implode(', ', $ranges); // 儲存整理過的格式
+            }
+        }
         if ($errors !== []) {
             return $this->renderGeneral($values, $errors, 422);
         }
@@ -511,12 +524,31 @@ final class AdminSettingsController extends AdminController
         return $this->render('admin/settings_general', [
             'scripts' => ['/assets/admin-settings.js'],
             'title' => '系統設定',
+            'ipDiagnostic' => $this->ipDiagnostic(),
             'groups' => $groups,
             'values' => $values,
             'errors' => $errors,
             'elevated' => $this->elevated(),
             'returnTo' => '/admin/settings',
         ], $status);
+    }
+
+    /**
+     * 目前這個連線的 IP 判斷結果，協助管理者確認「使用者 IP 來源」設定正確。
+     * 只顯示 IP 與協定相關標頭（只有最高權限管理者看得到這頁）。
+     *
+     * @return array<string, mixed>
+     */
+    private function ipDiagnostic(): array
+    {
+        $req = $this->app->request;
+        $result = $req->proxyResult() ?? ['ip' => $req->ip(), 'remote' => $req->ip(), 'trusted' => false, 'header' => '', 'https' => false];
+        $headers = [];
+        foreach (['CF-Connecting-IP', 'X-Forwarded-For', 'X-Real-IP', 'True-Client-IP', 'X-Forwarded-Proto'] as $h) {
+            $v = $req->header($h);
+            $headers[$h] = $v === '' ? null : mb_substr($v, 0, 200);
+        }
+        return $result + ['mode' => $this->app->settings->string('security.client_ip_mode'), 'headers' => $headers];
     }
 
     /**

@@ -306,3 +306,73 @@ test('猜帳號封鎖：同一 IP 輸入不存在的帳號達 5 次，暫時封�
     assert_same('/login/totp', $again->location());
     $pdo->exec('DELETE FROM login_attempts');
 });
+
+test('使用者 IP 來源：直接連線忽略代理標頭；信任的代理才採用；Cloudflare 模式下偽造標頭無效；設定檢查與診斷', function (): void {
+    $pdo = ctx()['pdo'];
+    $lastIp = function () use ($pdo): string {
+        return (string)$pdo->query("SELECT ip FROM activity_logs WHERE action = 'login.failure' ORDER BY id DESC LIMIT 1")->fetchColumn();
+    };
+    $attempt = function (array $headers): void {
+        $b = browser();
+        $b->get('/login');
+        $b->send('POST', '/login', ['_csrf' => $b->csrf(), 'username' => 'g1p1', 'password' => 'wrong-password'], $headers);
+    };
+    $pdo->exec('DELETE FROM login_attempts');
+
+    // 預設直接連線：偽造的 X-Forwarded-For 不被採用
+    $attempt(['X-Forwarded-For: 198.51.100.7']);
+    assert_same('127.0.0.1', $lastIp());
+
+    // Cloudflare 模式，但連線不是來自 Cloudflare（測試伺服器是 127.0.0.1）：偽造的 CF-Connecting-IP 無效
+    setSetting('security.client_ip_mode', '"cloudflare"');
+    $attempt(['CF-Connecting-IP: 198.51.100.7']);
+    assert_same('127.0.0.1', $lastIp(), '直連主機偽造 Cloudflare 標頭');
+
+    // 自訂代理，信任 127.0.0.1：採用標頭中的使用者 IP，且不同使用者分開計算封鎖
+    setSetting('security.client_ip_mode', '"custom"');
+    setSetting('security.trusted_proxy_ranges', '"127.0.0.1/32"');
+    $attempt(['X-Forwarded-For: 6.6.6.6, 198.51.100.7']);
+    assert_same('198.51.100.7', $lastIp(), '採用最右邊的非代理 IP，前段偽造值略過');
+    for ($i = 1; $i <= 5; $i++) {
+        $b = browser();
+        $b->get('/login');
+        $b->send('POST', '/login', ['_csrf' => $b->csrf(), 'username' => "ghost-ip-{$i}", 'password' => 'x'], ['X-Forwarded-For: 203.0.113.66']);
+    }
+    $other = browser();
+    $other->get('/login');
+    $other->send('POST', '/login', ['_csrf' => $other->csrf(), 'username' => ADMIN_USER, 'password' => ADMIN_PASS_NEW], ['X-Forwarded-For: 198.51.100.8']);
+    assert_same('/login/totp', $other->location(), '另一位使用者不受別人的封鎖影響');
+    $blocked = browser();
+    $blocked->get('/login');
+    $blocked->send('POST', '/login', ['_csrf' => $blocked->csrf(), 'username' => ADMIN_USER, 'password' => ADMIN_PASS_NEW], ['X-Forwarded-For: 203.0.113.66']);
+    assert_same(429, $blocked->status, '猜帳號的那個 IP 被封鎖');
+    $pdo->exec('DELETE FROM login_attempts');
+
+    // 設定頁：診斷資訊與輸入檢查
+    $admin = adminLogin();
+    elevate($admin, '/admin/settings');
+    $page = $admin->get('/admin/settings')->body;
+    assert_contains('data-ip-diagnostic', $page);
+    assert_contains('data-ip-trusted="1"', $page);
+    preg_match_all('#<input type="(?:text|number|email)"[^>]* name="([a-z_]+)" value="([^"]*)"#', $page, $m, PREG_SET_ORDER);
+    $data = [];
+    foreach ($m as $x) {
+        $data[$x[1]] = html_entity_decode($x[2]);
+    }
+    preg_match_all('#name="([a-z_]+)" value="1" checked#', $page, $c);
+    foreach ($c[1] as $name) {
+        $data[$name] = '1';
+    }
+    $data['system__timezone'] = 'Asia/Taipei';
+    $data['system__theme_color'] = 'default';
+    foreach (['aliyun' => '', 'custom' => '0.0.0.0/0'] as $mode => $ranges) {
+        $admin->get('/admin/settings');
+        $admin->post('/admin/settings', array_merge($data, ['security__client_ip_mode' => $mode, 'security__trusted_proxy_ranges' => $ranges]));
+        assert_same(422, $admin->status, "{$mode} / {$ranges}");
+    }
+    $admin->get('/admin/settings');
+    $admin->post('/admin/settings', array_merge($data, ['security__client_ip_mode' => 'direct', 'security__trusted_proxy_ranges' => '', 'security__client_ip_header' => '']));
+    assert_same('/admin/settings', $admin->location());
+    assert_same(null, settingRow('security.client_ip_mode'), '還原為直接連線');
+    $pdo->exec('DELETE FROM login_attempts');
+});

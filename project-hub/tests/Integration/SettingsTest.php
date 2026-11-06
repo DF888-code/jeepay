@@ -109,6 +109,7 @@ test('一般設定：儲存後立即生效，紀錄修改前後的值；改回�
             $data[$name] = '1';
         }
         $data['system__timezone'] = 'Asia/Taipei';
+    $data['security__client_ip_mode'] = $data['security__client_ip_mode'] ?? 'direct';
         $data['system__theme_color'] = 'default'; // 下拉選單不在上面的解析範圍
         return $data;
     };
@@ -405,6 +406,7 @@ test('站台顏色與標籤：選擇後全站（含登入頁）套用；只接�
         $data[$name] = '1';
     }
     $data['system__timezone'] = 'Asia/Taipei';
+    $data['security__client_ip_mode'] = $data['security__client_ip_mode'] ?? 'direct';
 
     $admin->post('/admin/settings', $data + ['system__theme_color' => 'url(evil)']);
     assert_same(422, $admin->status, '不接受清單以外的值');

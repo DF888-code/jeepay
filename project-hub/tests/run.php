@@ -20,6 +20,7 @@ $failures = 0;
 require __DIR__ . '/Unit/AuthPrimitivesTest.php';
 require __DIR__ . '/Unit/SearchNormalizerTest.php';
 require __DIR__ . '/Unit/S3SignerTest.php';
+require __DIR__ . '/Unit/TrustedProxyTest.php';
 $failures += run_registered_tests('單元測試');
 
 $dbName = (string)getenv('PH_TEST_DB_NAME');

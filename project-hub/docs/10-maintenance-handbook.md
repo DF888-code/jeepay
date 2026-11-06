@@ -99,7 +99,7 @@ php tests/run.php                       # 只跑單元測試
 PH_TEST_DB_HOST=127.0.0.1 PH_TEST_DB_NAME=ph_it_test PH_TEST_DB_USER=ph PH_TEST_DB_PASS=*** php tests/run.php
                                         # 加整合測試：會清空該資料庫（名稱必須含 test）
 ```
-整合測試會自動啟動網站與假的外部服務（Google、R2、Brevo、SMTP），不需連網。目前結果：單元 17、整合 168 項全部通過。
+整合測試會自動啟動網站與假的外部服務（Google、R2、Brevo、SMTP），不需連網。目前結果：單元 22、整合 169 項全部通過。
 
 ### 發佈新版
 1. 修改 `VERSION`（規則：修正 +0.0.1、新功能 +0.1.0）並在 `CHANGELOG.md` 最上方加一列；
@@ -117,6 +117,7 @@ PH_TEST_DB_HOST=127.0.0.1 PH_TEST_DB_NAME=ph_it_test PH_TEST_DB_USER=ph PH_TEST_
 | 對外連線 | SMTP 25／465／587、HTTPS 443 可連線（已實測） |
 | Cloudflare R2 | 填「S3 API 端點」（歐盟儲存區端點不同）；bucket 必須私有；API 權杖只給單一 bucket 的物件讀寫；已有檔案後不可更換 bucket |
 | Google Drive | 只要求 `drive.file` 權限；OAuth 同意畫面必須「已發布」，否則 7 天後授權失效 |
+| Cloudflare／阿里雲高防 | 套用前先設定「代理與使用者 IP」（見 07 文件第 2.5 節）；Cloudflare SSL 模式選「完整」，關閉 Rocket Loader；所有讀取 IP 的地方都經 `Request::ip()`，不可直接讀 `REMOTE_ADDR` 或代理標頭 |
 | 寄信 | 寄件者必須是寄信服務已驗證的地址；`config.php` 的 `base_url` 必須設定，否則不寄救援信（防 Host 標頭偽造） |
 
 ## 7. 開發時遇過的陷阱（避免重蹈覆轍）
